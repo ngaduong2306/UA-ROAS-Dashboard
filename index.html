@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>UA ROAS Predictor v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f7;
+  --surface:#ffffff;
+  --surface2:#f5f5f7;
+  --border:#d2d2d7;
+  --border2:#c8c8cc;
+  --text:#1d1d1f;
+  --muted:#86868b;
+  --faint:#c7c7cc;
+  --green:#34c759;--green-bg:#f0faf2;--green-border:#a8e6b4;
+  --red:#ff3b30;--red-bg:#fff5f5;--red-border:#fca5a5;
+  --amber:#ff9500;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --accent:#007aff;--accent2:#5856d6;
+  --accent-light:#f0f5ff;--accent-border:#b3d4ff;
+  --android:#34c759;--android-bg:#f0fdf4;--android-border:#bbf7d0;
+  --ios:#007aff;--ios-bg:#f0f5ff;--ios-border:#b3d4ff;
+  --asa:#ff9500;--meta:#1877f2;--google:#ea4335;--tiktok:#010101;
+  --sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --mono:'SF Mono','Menlo','Courier New',monospace;
+}
+html,body{height:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;display:flex;flex-direction:column;letter-spacing:-0.01em}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:52px;background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;
+}
+.topbar-logo{
+  display:flex;align-items:center;gap:10px;
+}
+.topbar-icon{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,#007aff,#5856d6);
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:14px;font-weight:700;letter-spacing:-.5px;
+}
+.topbar h1{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.2px}
+.topbar .sub{font-size:11px;color:var(--muted);margin-left:4px}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.topbar-pill{
+  font-size:11px;color:var(--muted);
+  background:var(--surface2);border:1px solid var(--border);
+  padding:4px 12px;border-radius:20px;font-weight:500;
+}
+
+/* ── MAIN TABS ── */
+.main-tabs{
+  display:flex;background:var(--surface);
+  border-bottom:1px solid var(--border);flex-shrink:0;padding:0 16px;
+}
+.main-tab{
+  padding:12px 16px;font-family:var(--sans);font-size:12px;font-weight:600;
+  background:none;border:none;border-bottom:2px solid transparent;
+  cursor:pointer;color:var(--muted);margin-bottom:-1px;transition:all .15s;
+  letter-spacing:.01em;
+}
+.main-tab:hover{color:var(--accent)}
+.main-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── LAYOUT ── */
+.page{display:none;flex:1;overflow:hidden;flex-direction:column}
+.page.on{display:flex}
+
+/* ══ TRAIN PAGE ══ */
+.train-layout{display:grid;grid-template-columns:420px 1fr;width:100%;height:100%}
+.train-col{padding:24px;overflow-y:auto;border-right:1px solid var(--border)}
+.train-col:last-child{border:none}
+
+.sec-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+
+.step-list{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.step{display:flex;gap:12px;align-items:flex-start}
+.step-num{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;
+  background:var(--accent-light);border:1.5px solid var(--accent-border);
+  color:var(--accent);font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;margin-top:1px;
+}
+.step-body .step-title{font-size:12px;font-weight:600;margin-bottom:3px}
+.step-body .step-desc{font-size:11px;color:var(--muted);line-height:1.6}
+.step-body code{font-family:var(--mono);font-size:10px;background:var(--surface2);padding:1px 4px;border-radius:3px}
+
+hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+
+/* Form fields */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text);margin-bottom:5px}
+.field label .opt{font-weight:400;color:var(--muted)}
+input[type=text],input[type=number],select{
+  width:100%;border:1.5px solid var(--border);background:var(--surface);
+  padding:8px 11px;font-family:var(--sans);font-size:13px;color:var(--text);
+  border-radius:8px;outline:none;transition:border-color .15s,box-shadow .15s;
+  -webkit-appearance:none;
+}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,99,245,.12)}
+input::placeholder{color:var(--faint)}
+
+/* Platform toggle */
+.platform-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.plat-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);
+  cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;
+  background:var(--surface2);color:var(--muted);transition:all .15s;
+}
+.plat-btn svg{width:16px;height:16px;flex-shrink:0}
+.plat-btn.android.on{background:var(--android-bg);border-color:var(--android);color:var(--android)}
+.plat-btn.ios.on{background:var(--ios-bg);border-color:var(--ios);color:var(--ios)}
+.plat-btn:not(.on):hover{border-color:var(--accent-border);background:var(--accent-light);color:var(--accent)}
+
+/* Anchor day selector (train) */
+.anchor-day-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.anchor-day-btn{
+  padding:8px;border-radius:8px;border:1.5px solid var(--border);
+  cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;
+  background:var(--surface2);color:var(--muted);transition:all .15s;text-align:center;
+}
+.anchor-day-btn.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+
+/* Upload zones */
+.upload-zone{
+  border:1.5px dashed var(--border);padding:20px;
+  text-align:center;cursor:pointer;transition:all .2s;
+  background:var(--surface2);border-radius:10px;position:relative;
+}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--accent-light)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uz-icon{font-size:22px;margin-bottom:6px}
+.uz-label{font-size:12px;font-weight:500;color:var(--muted)}
+.uz-sub{font-size:10px;color:var(--faint);margin-top:3px}
+
+.upload-status{margin-top:8px;padding:8px 12px;font-size:11px;border-radius:7px;border:1px solid var(--border)}
+.us-ok{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+.us-err{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
+.us-pending{background:var(--surface2);color:var(--muted)}
+
+/* Buttons */
+.btn{
+  padding:9px 18px;background:var(--accent);color:#fff;border:none;
+  font-family:var(--sans);font-size:12px;font-weight:600;
+  cursor:pointer;border-radius:8px;transition:all .15s;
+}
+.btn:hover{background:#3d51e8;box-shadow:0 2px 8px rgba(79,99,245,.3)}
+.btn-outline{background:var(--surface);color:var(--text);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.btn-sm{padding:5px 12px;font-size:11px}
+.btn-danger{background:#ff3b30}
+.btn-danger:hover{background:#ff3b30}
+.btn-run{
+  width:100%;padding:12px;
+  background:linear-gradient(135deg,#007aff,#5856d6);
+  color:#fff;border:none;font-family:var(--sans);font-size:13px;font-weight:700;
+  cursor:pointer;border-radius:10px;
+  box-shadow:0 2px 12px rgba(79,99,245,.35);transition:all .15s;
+  letter-spacing:.01em;
+}
+.btn-run:hover{box-shadow:0 4px 18px rgba(79,99,245,.45);transform:translateY(-1px)}
+.btn-run:active{transform:translateY(0)}
+
+/* App list */
+.app-list{display:flex;flex-direction:column;gap:8px}
+.app-item{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:10px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;transition:box-shadow .15s;
+}
+.app-item:hover{box-shadow:0 2px 10px rgba(79,99,245,.1)}
+.ai-name{font-size:13px;font-weight:600}
+.ai-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
+.badge-accent{background:var(--accent-light);color:var(--accent);border:1px solid var(--accent-border)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-muted{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.badge-android{background:var(--android-bg);color:var(--android);border:1px solid var(--android-border)}
+.badge-ios{background:var(--ios-bg);color:var(--ios);border:1px solid var(--ios-border)}
+
+/* ══ PREDICT PAGE ══ */
+.predict-layout{display:grid;grid-template-columns:280px 1fr;width:100%;flex:1;min-height:0;min-width:0}
+.left-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.lp-section{padding:16px;border-bottom:1px solid var(--border)}
+
+/* Source inputs */
+.source-grid{display:flex;flex-direction:column;gap:8px}
+.source-row{
+  background:var(--surface2);border:1.5px solid var(--border);
+  border-radius:9px;padding:10px 12px;
+}
+.source-header{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.source-dot{width:10px;height:10px;border-radius:50%}
+.source-name{font-size:12px;font-weight:600}
+.source-inputs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.source-field label{font-size:10px;color:var(--muted);font-weight:500;display:block;margin-bottom:3px}
+.source-field input{font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border)}
+.source-field input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(79,99,245,.1)}
+
+/* Anchor rows */
+.anchor-row{
+  display:grid;grid-template-columns:36px 1fr 80px;
+  align-items:center;gap:6px;
+  padding:5px 0;border-bottom:1px solid var(--border);
+}
+.anchor-row:last-child{border:none}
+.anchor-day{font-size:11px;font-weight:700;color:var(--accent)}
+.anchor-base{font-size:10px;color:var(--muted)}
+.anchor-base span{color:var(--text);font-weight:500}
+.anchor-input{
+  border:1px solid var(--border);padding:4px 7px;
+  font-family:var(--sans);font-size:11px;
+  background:var(--surface);text-align:right;border-radius:6px;
+  width:100%;outline:none;transition:border-color .15s;
+}
+.anchor-input:focus{border-color:var(--accent)}
+
+/* Model info box */
+.model-box{
+  padding:14px 16px;font-size:11px;color:var(--muted);line-height:1.8;
+  margin-top:auto;background:var(--surface2);border-top:1px solid var(--border);
+}
+.model-box strong{color:var(--text);font-weight:600}
+
+/* Right panel */
+.right-panel{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.sub-tabs{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;padding:0 16px;flex-shrink:0;
+}
+.sub-tab{
+  font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.01em;
+  padding:10px 14px;background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--muted);cursor:pointer;text-transform:uppercase;transition:all .15s;
+}
+.sub-tab:hover{color:var(--accent)}
+.sub-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.sub-pane{display:none;flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 24px}
+.sub-pane.on{display:block}
+
+/* KPI cards */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;min-width:0}
+.kpi{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:12px;padding:14px 12px;transition:box-shadow .15s;
+}
+.kpi:hover{box-shadow:0 2px 12px rgba(79,99,245,.1)}
+.kpi.focal{border-color:var(--accent);box-shadow:0 2px 14px rgba(79,99,245,.15)}
+.k-day{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:.04em}
+.k-roas{font-size:22px;font-weight:700;line-height:1}
+.k-delta{font-size:10px;margin-top:4px;font-weight:500}
+.k-rev{font-size:11px;color:var(--muted);margin-top:5px}
+.k-profit{font-size:11px;font-weight:600;margin-top:2px}
+.clr-green{color:var(--green)}.clr-red{color:var(--red)}.clr-amber{color:var(--amber)}
+
+.sec-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px}
+.sec-title:first-child{margin-top:0}
+
+/* Breakeven */
+.be-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.be{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px}
+.be.hit{border-color:var(--accent);background:var(--accent-light)}
+.be-tgt{font-size:10px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.be-day{font-size:22px;font-weight:700}
+.be-sub{font-size:10px;color:var(--muted);margin-top:3px}
+
+/* Source breakdown */
+.source-breakdown{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.sb-card{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px;
+}
+.sb-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.sb-dot{width:10px;height:10px;border-radius:50%}
+.sb-name{font-size:12px;font-weight:700}
+.sb-weight{margin-left:auto;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
+.sb-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.sb-kpi{text-align:center}
+.sb-kpi-label{font-size:9px;color:var(--muted);font-weight:600;margin-bottom:3px;letter-spacing:.04em}
+.sb-kpi-val{font-size:14px;font-weight:700}
+.sb-financials{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px}
+.sb-fin-label{color:var(--muted)}
+.sb-fin-val{font-weight:600;text-align:right}
+.sb-warning{
+  margin-top:8px;padding:6px 10px;border-radius:6px;font-size:10px;font-weight:600;
+  background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);
+}
+
+/* Tables */
+.dt{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto}
+.dt th{
+  background:var(--surface2);color:var(--muted);
+  padding:9px 12px;text-align:left;font-size:10px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;
+  border-bottom:1.5px solid var(--border);
+}
+.dt td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.dt tr:last-child td{border:none}
+.dt tr:hover td{background:var(--surface2)}
+.r{text-align:right}.bold{font-weight:700}
+.spike{background:#fffbf0}
+.anchor-pinned{background:var(--green-bg)}
+
+/* Chart */
+.chart-box{
+  background:var(--surface);border:1.5px solid var(--border);
+  padding:18px;margin-bottom:16px;border-radius:12px;
+}
+.chart-hd{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+/* Status bar */
+.statusbar{
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:8px 20px;font-size:11px;color:var(--muted);
+  display:flex;gap:8px;flex-shrink:0;align-items:center;flex-wrap:wrap;width:100%;
+}
+.sb-pill{
+  padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;
+  background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+}
+.sb-pill.active{background:var(--accent-light);border-color:var(--accent-border);color:var(--accent)}
+
+/* Tags */
+.tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.tag-h{background:var(--accent);color:#fff}
+.tag-m{background:var(--accent-light);color:var(--accent);border:1px solid var(--accent-border)}
+.tag-g,.tag-l{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+
+/* Empty */
+.empty{text-align:center;padding:60px 24px;color:var(--faint);font-size:12px;line-height:2}
+.empty-icon{font-size:32px;margin-bottom:8px;display:block}
+
+/* Warning flag */
+.warn-flag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;
+  background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="topbar-icon">UA</div>
+    <div>
+      <h1>ROAS Predictor</h1>
+    </div>
+  </div>
+  <span style="color:var(--border);font-size:16px">|</span>
+  <span style="font-size:11px;color:var(--muted)">2-tier model · App + GEO · Multi-anchor · Media Source</span>
+  <div class="right">
+    <div class="topbar-pill" id="tb-right">No models trained</div>
+  </div>
+</div>
+
+<!-- MAIN TABS -->
+<div class="main-tabs">
+  <button class="main-tab" onclick="mainTab('train',this)">⚙ Train Model</button>
+  <button class="main-tab on" onclick="mainTab('predict',this)">▶ Predict</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TRAIN PAGE
+═══════════════════════════════════════════ -->
+<div class="page" id="page-train">
+<div class="train-layout">
+
+  <!-- COL 1 -->
+  <div class="train-col">
+    <div class="sec-label">How to train</div>
+    <div class="step-list">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Đặt tên app & chọn platform</div>
+          <div class="step-desc">Tên gợi nhớ. Platform xác định input logic — Android dùng D3 làm early signal anchor; iOS dùng anchor day tùy chọn (D2/D7) cho GEO &amp; Source từ SSOT.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Upload App-level CSV</div>
+          <div class="step-desc">Export từ AppsFlyer → Cohort → ROAS Cumulative.<br>
+            Cột cần có: <code>App Id, Users, Cost, roas - Rate - day N</code></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Upload GEO-level CSV (tùy chọn)</div>
+          <div class="step-desc">Breakdown theo quốc gia. Cần thêm cột <code>Ltv Country</code></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Bấm Train</div>
+          <div class="step-desc">Model tự tính ratio table, detect renewal spikes, lưu vào localStorage.</div>
+        </div>
+      </div>
+    </div>
+
+    <hr/>
+
+    <div class="sec-label">Add / Retrain App</div>
+
+    <div class="field">
+      <label>App name</label>
+      <input type="text" id="tr-appname" placeholder="e.g. KeyConnect, Go Fly..."/>
+    </div>
+
+    <div class="field">
+      <label>Platform</label>
+      <div class="platform-toggle">
+        <button class="plat-btn android on" onclick="selectPlatform('android',this)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341a1 1 0 01-1-1V9.07a1 1 0 012 0v5.271a1 1 0 01-1 1zm-11.046 0a1 1 0 01-1-1V9.07a1 1 0 012 0v5.271a1 1 0 01-1 1zM5.19 7.857a6.81 6.81 0 0113.62 0H5.19zm3.89-2.5l.8-1.5a.4.4 0 01.7.38l-.83 1.54a6.87 6.87 0 00-1.62-.14l.95-1.28zm7.84 0l-.8-1.5a.4.4 0 00-.7.38l.83 1.54a6.87 6.87 0 011.62-.14l-.95-1.28zM5 9.07h14v8.41a1.5 1.5 0 01-1.5 1.5h-.87v2.52a1 1 0 01-2 0v-2.52H9.37v2.52a1 1 0 01-2 0v-2.52H6.5A1.5 1.5 0 015 17.48V9.07z"/></svg>
+          Android
+        </button>
+        <button class="plat-btn ios" onclick="selectPlatform('ios',this)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          iOS
+        </button>
+      </div>
+    </div>
+
+    <div class="field" id="anchor-day-field" style="display:none">
+      <label>SSOT Anchor Day <span class="opt" style="font-weight:400;color:var(--muted)">(iOS · dùng cho GEO &amp; Media Source)</span></label>
+      <div class="anchor-day-toggle">
+        <button class="anchor-day-btn" onclick="selectAnchorDay(2,this)">D2</button>
+        <button class="anchor-day-btn on" onclick="selectAnchorDay(7,this)">D7 (recommended)</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>App ID <span class="opt">(optional)</span></label>
+      <input type="text" id="tr-appid" placeholder="com.example.app"/>
+    </div>
+
+    <div class="field">
+      <label>ROAS CSV — App level <span style="color:var(--red)">*</span></label>
+      <div class="upload-zone" id="uz-app">
+        <input type="file" accept=".csv" onchange="onFileApp(event)"/>
+        <div class="uz-icon">📄</div>
+        <div class="uz-label">Click hoặc kéo thả CSV</div>
+        <div class="uz-sub">App ROAS Cumulative · AppsFlyer export</div>
+      </div>
+      <div class="upload-status us-pending" id="us-app">Chưa có file</div>
+    </div>
+
+    <div class="field">
+      <label id="uz-geo-label">ROAS CSV — GEO level <span class="opt">(optional)</span></label>
+      <div class="upload-zone" id="uz-geo">
+        <input type="file" accept=".csv" onchange="onFileGeo(event)"/>
+        <div class="uz-icon">🌍</div>
+        <div class="uz-label">Click hoặc kéo thả CSV</div>
+        <div class="uz-sub" id="uz-geo-sub">GEO ROAS Cumulative · AppsFlyer export</div>
+      </div>
+      <div class="upload-status us-pending" id="us-geo">Chưa có file (optional)</div>
+    </div>
+
+    <div class="field">
+      <label id="uz-src-label">ROAS CSV — Media Source level <span class="opt">(optional)</span></label>
+      <div class="upload-zone" id="uz-src">
+        <input type="file" accept=".csv" onchange="onFileSource(event)"/>
+        <div class="uz-icon">📡</div>
+        <div class="uz-label">Click hoặc kéo thả CSV</div>
+        <div class="uz-sub" id="uz-src-sub">Media Source ROAS Cumulative · AppsFlyer export</div>
+      </div>
+      <div class="upload-status us-pending" id="us-src">Chưa có file (optional)</div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn" style="flex:1" onclick="trainApp()">Train model</button>
+      <button class="btn btn-outline" onclick="clearTrainForm()">Clear</button>
+    </div>
+    <div id="train-result" style="margin-top:10px"></div>
+  </div>
+
+  <!-- COL 2: Models list -->
+  <div class="train-col">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="sec-label" style="margin:0">Trained Models</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="exportModels()">Export JSON</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">Import JSON</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importModels(event)"/>
+      </div>
+    </div>
+    <div id="app-list" class="app-list">
+      <div class="empty"><span class="empty-icon">🤖</span>Chưa có model nào.<br>Upload CSV và bấm Train để bắt đầu.</div>
+    </div>
+    <div id="model-detail" style="display:none;margin-top:16px">
+      <hr/>
+      <div class="sec-label" id="md-title">Model Detail</div>
+      <div id="md-body"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PREDICT PAGE
+═══════════════════════════════════════════ -->
+<div class="page on" id="page-predict">
+<div class="predict-layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <div class="lp-section">
+      <div class="sec-label">App</div>
+      <div class="field" style="margin:0">
+        <select id="sel-app" onchange="onAppSelect()">
+          <option value="">— no models trained —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="lp-section">
+      <div class="sec-label">App-level Input</div>
+      <div class="field">
+        <label id="anchor-label">ROAS D3 — app level (%)</label>
+        <input type="number" id="inp-anchor" value="" step="0.01" min="0" max="9999"
+          placeholder="e.g. 106.81" oninput="updateAnchorBases()"/>
+        <div id="anchor-hint" style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5;display:none"></div>
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Total spend ($)</label>
+        <input type="number" id="inp-spend" value="" step="100" min="0" placeholder="e.g. 115340"/>
+      </div>
+      <button class="btn-run" onclick="predict()">▶ PREDICT</button>
+    </div>
+
+    <!-- Media Source inputs — iOS only: D2 + D7 from SSOT -->
+    <div class="lp-section" id="source-section" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div class="sec-label" style="margin:0">Media Sources</div>
+        <button class="btn btn-outline btn-sm" onclick="clearSources()">clear</button>
+      </div>
+      <p style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.5">iOS: nhập <strong>D2 + D7</strong> từ SSOT để tính ROAS theo source.</p>
+      <div class="source-grid" id="source-rows"></div>
+    </div>
+
+    <!-- Actual anchors: Android = fill actual ROAS any D to improve prediction; iOS = same -->
+    <div class="lp-section" id="anchor-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div class="sec-label" style="margin:0">Actual ROAS <span style="font-weight:400;color:var(--faint)">(optional)</span></div>
+        <button class="btn btn-outline btn-sm" onclick="clearAnchors()">clear</button>
+      </div>
+      <p id="anchor-section-hint" style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.5">Nhập ROAS thực tế → model recalibrate từ anchor đó trở đi.</p>
+      <div id="anchor-rows"><div style="font-size:11px;color:var(--faint)">Chọn app để xem.</div></div>
+      <div id="anchor-status" style="margin-top:6px;font-size:10px"></div>
+    </div>
+
+    <!-- GEO inputs: Android = any D level; iOS = D2 + D7 from SSOT only -->
+    <div class="lp-section" style="flex:1;overflow-y:auto" id="geo-lp">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div class="sec-label" style="margin:0">GEO Inputs <span style="font-weight:400;color:var(--faint)">(optional)</span></div>
+        <button class="btn btn-outline btn-sm" onclick="clearGeo()">clear</button>
+      </div>
+      <p id="geo-hint" style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.5;display:none"></p>
+      <div id="geo-rows"><div style="font-size:11px;color:var(--faint)">Chọn app để xem GEO list.</div></div>
+    </div>
+
+    <div class="model-box" id="model-box">
+      <strong>No app selected</strong><br>Chọn app để xem model info.
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="sub-tabs">
+      <button class="sub-tab on" onclick="subTab('overview',this)">Overview</button>
+      <button class="sub-tab" onclick="subTab('source',this)">Media Source</button>
+      <button class="sub-tab" onclick="subTab('chart',this)">Chart</button>
+      <button class="sub-tab" onclick="subTab('geo',this)">GEO</button>
+      <button class="sub-tab" onclick="subTab('table',this)">Full Table</button>
+    </div>
+
+    <div class="sub-pane on" id="sp-overview">
+      <div class="empty" id="ov-empty"><span class="empty-icon">📊</span>Chọn app, nhập ROAS, bấm PREDICT.</div>
+      <div id="ov-body" style="display:none">
+        <div class="sec-title">Key Checkpoints</div>
+        <div class="kpi-row" id="kpi-cards"></div>
+        <div class="sec-title">Breakeven Milestones</div>
+        <div class="be-row" id="be-cards"></div>
+        <div class="sec-title">Revenue & Profit</div>
+        <div id="rev-wrap"></div>
+      </div>
+    </div>
+
+    <div class="sub-pane" id="sp-source">
+      <div class="empty" id="src-empty"><span class="empty-icon">📱</span>Nhập D2/D7 per source ở panel trái rồi PREDICT.<br><span style="font-size:10px;color:var(--faint)">(Chỉ available với iOS model)</span></div>
+      <div id="src-body" style="display:none">
+        <div class="sec-title">Source Performance vs App Average</div>
+        <div class="source-breakdown" id="src-cards"></div>
+        <div class="sec-title">Source Comparison Table</div>
+        <div id="src-table-wrap"></div>
+        <div class="chart-box" style="margin-top:16px">
+          <div class="chart-hd">D30 ROAS by Source (%)</div>
+          <div style="position:relative;height:220px"><canvas id="c-source"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-pane" id="sp-chart">
+      <div class="chart-box">
+        <div class="chart-hd">ROAS Curve D1–D90</div>
+        <div style="position:relative;height:260px"><canvas id="c-roas"></canvas></div>
+      </div>
+      <div class="chart-box" id="rev-chart-box">
+        <div class="chart-hd">Revenue vs Spend ($)</div>
+        <div style="position:relative;height:220px"><canvas id="c-rev"></canvas></div>
+      </div>
+    </div>
+
+    <div class="sub-pane" id="sp-geo">
+      <div class="empty" id="geo-empty"><span class="empty-icon">🌍</span>Nhập ROAS theo GEO ở panel trái rồi PREDICT.</div>
+      <div id="geo-body" style="display:none">
+        <div class="chart-box" style="margin-bottom:16px">
+          <div class="chart-hd">D30 ROAS by GEO (%)</div>
+          <div style="position:relative;height:240px"><canvas id="c-geo"></canvas></div>
+        </div>
+        <table class="dt" id="geo-tbl">
+          <thead><tr>
+            <th>GEO</th><th>Tier</th><th class="r">D{anchor}</th>
+            <th class="r">D14</th><th class="r">D30</th><th class="r">D60</th><th class="r">D90</th>
+            <th class="r">D30 mult</th><th>Source</th>
+          </tr></thead>
+          <tbody id="geo-tbl-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub-pane" id="sp-table">
+      <div class="empty" id="tbl-empty"><span class="empty-icon">📋</span>Bấm PREDICT để xem full table.</div>
+      <table class="dt" id="full-tbl" style="display:none">
+        <thead><tr>
+          <th>Day</th><th class="r">Ratio</th><th class="r">ROAS Base</th>
+          <th class="r">ROAS Recal</th>
+          <th class="r">Revenue</th><th class="r">Profit</th><th>Note</th>
+        </tr></thead>
+        <tbody id="full-tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<!-- STATUS BAR -->
+<div class="statusbar" id="statusbar" style="display:none">
+  <span class="sb-pill" id="sb-app"></span>
+  <span class="sb-pill" id="sb-anchor"></span>
+  <span class="sb-pill" id="sb-spend"></span>
+  <span class="sb-pill" id="sb-src"></span>
+  <span class="sb-pill" id="sb-geo-ct"></span>
+  <span class="sb-pill" id="sb-mae" style="margin-left:auto"></span>
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONSTANTS & STORAGE
+// ═══════════════════════════════════════════
+const STORE_KEY = 'ua_roas_models_v4';
+const SOURCES = [
+  {id:'asa',   name:'Apple Search Ads', color:'#f59e0b'},
+  {id:'meta',  name:'Meta',             color:'#1877f2'},
+  {id:'google',name:'Google UAC',       color:'#ea4335'},
+  {id:'tiktok',name:'TikTok',           color:'#010101'},
+];
+
+function loadModels(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); }catch(e){ return {}; } }
+function saveModels(m){ localStorage.setItem(STORE_KEY, JSON.stringify(m)); }
+
+// ═══════════════════════════════════════════
+// CSV PARSER
+// ═══════════════════════════════════════════
+function parseCSV(text){
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line=>{
+    const vals = line.split(',').map(v=>v.trim().replace(/^"|"$/g,''));
+    const row = {};
+    headers.forEach((h,i)=>row[h]=vals[i]||'');
+    return row;
+  }).filter(r=>Object.values(r).some(v=>v!=''));
+}
+
+function extractDayVals(row){
+  const result = {};
+  for(const [k,v] of Object.entries(row)){
+    if(!k.toLowerCase().includes('day')) continue;
+    const m = k.match(/day\s*(\d+)/i);
+    if(m && v && v!=''){
+      const num = parseFloat(v);
+      if(!isNaN(num)) result[+m[1]] = num;
+    }
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════════
+// TRAIN STATE
+// ═══════════════════════════════════════════
+let trainState = { appCSV:null, geoCSV:null, sourceCSV:null, platform:'android', anchorDay:3 };
+
+function selectPlatform(plat, btn){
+  trainState.platform = plat;
+  document.querySelectorAll('.plat-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const adf = document.getElementById('anchor-day-field');
+  adf.style.display = plat==='ios' ? '' : 'none';
+  if(plat==='android'){
+    trainState.anchorDay = 3;
+    document.getElementById('uz-geo-label').innerHTML='ROAS CSV — GEO level <span class="opt">(optional)</span>';
+    document.getElementById('uz-geo-sub').textContent='GEO ROAS Cumulative · AppsFlyer export';
+    document.getElementById('uz-src-label').innerHTML='ROAS CSV — Media Source level <span class="opt">(optional)</span>';
+    document.getElementById('uz-src-sub').textContent='Media Source ROAS Cumulative · AppsFlyer export';
+  } else {
+    trainState.anchorDay = 7;
+    document.getElementById('uz-geo-label').innerHTML='ROAS CSV — GEO level <span class="opt">(optional)</span> <span style="font-size:10px;background:var(--ios-bg);color:var(--ios);border:1px solid var(--ios-border);padding:1px 6px;border-radius:10px;font-weight:600">SSOT D2 &amp; D7</span>';
+    document.getElementById('uz-geo-sub').textContent='GEO ROAS · cần có cột roas-day-2 và roas-day-7 (SSOT)';
+    document.getElementById('uz-src-label').innerHTML='ROAS CSV — Media Source level <span class="opt">(optional)</span> <span style="font-size:10px;background:var(--ios-bg);color:var(--ios);border:1px solid var(--ios-border);padding:1px 6px;border-radius:10px;font-weight:600">SSOT D2 &amp; D7</span>';
+    document.getElementById('uz-src-sub').textContent='Media Source ROAS · cần có cột roas-day-2 và roas-day-7 (SSOT)';
+  }
+}
+
+function selectAnchorDay(day, btn){
+  trainState.anchorDay = day;
+  document.querySelectorAll('.anchor-day-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+function onFileApp(e){
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const rows = parseCSV(ev.target.result);
+      const r0 = rows[0];
+      if(!r0['Users']) throw new Error('Không tìm thấy cột Users. Kiểm tra lại file.');
+      const dayKeys = Object.keys(r0).filter(k=>k.match(/day\s*\d+/i));
+      if(dayKeys.length < 3) throw new Error('Không đủ cột day.');
+      trainState.appCSV = rows;
+      if(!document.getElementById('tr-appid').value) document.getElementById('tr-appid').value = r0['App Id']||'';
+      showStatus('us-app','ok',`✓ ${f.name} · ${rows.length} cohort(s) · ${dayKeys.length} day cols`);
+    } catch(err){ showStatus('us-app','err','✗ '+err.message); }
+  };
+  reader.readAsText(f);
+}
+
+function onFileGeo(e){
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const rows = parseCSV(ev.target.result);
+      if(!rows[0]['Ltv Country']) throw new Error('Không tìm thấy cột Ltv Country.');
+      trainState.geoCSV = rows;
+      const geos = [...new Set(rows.map(r=>r['Ltv Country']))].length;
+      showStatus('us-geo','ok',`✓ ${f.name} · ${geos} GEOs`);
+    } catch(err){ showStatus('us-geo','err','✗ '+err.message); }
+  };
+  reader.readAsText(f);
+}
+
+function onFileSource(e){
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const rows = parseCSV(ev.target.result);
+      const r0 = rows[0];
+      // Expect a Media Source column — common AppsFlyer names
+      const srcCol = ['Media Source','media_source','Media source','media source'].find(c=>r0[c]!=null);
+      if(!srcCol) throw new Error('Không tìm thấy cột Media Source. Kiểm tra lại file.');
+      const sources = [...new Set(rows.map(r=>r[srcCol]).filter(Boolean))];
+      trainState.sourceCSV = rows;
+      trainState.sourceCol = srcCol;
+      showStatus('us-src','ok',`✓ ${f.name} · ${sources.length} source(s): ${sources.slice(0,4).join(', ')}${sources.length>4?'...':''}`);
+    } catch(err){ showStatus('us-src','err','✗ '+err.message); }
+  };
+  reader.readAsText(f);
+}
+
+function showStatus(id,type,msg){
+  const el = document.getElementById(id);
+  el.className = `upload-status us-${type==='ok'?'ok':type==='err'?'err':'pending'}`;
+  el.textContent = msg;
+}
+
+// ═══════════════════════════════════════════
+// TRAIN
+// ═══════════════════════════════════════════
+function trainApp(){
+  const name = document.getElementById('tr-appname').value.trim();
+  const appId = document.getElementById('tr-appid').value.trim();
+  if(!name){ alert('Nhập tên app trước.'); return; }
+  if(!trainState.appCSV){ alert('Upload App ROAS CSV trước.'); return; }
+
+  const resultEl = document.getElementById('train-result');
+  resultEl.innerHTML = '<div class="upload-status us-pending">Training...</div>';
+
+  try{
+    const platform = trainState.platform;
+    const anchorDay = trainState.anchorDay;
+
+    const appRow = trainState.appCSV[0];
+    const appDayVals = extractDayVals(appRow);
+    const anchorVal = appDayVals[anchorDay];
+    if(!anchorVal || anchorVal===0) throw new Error(`ROAS D${anchorDay} = 0 hoặc không tìm thấy.`);
+
+    // Ratio table: ratio[d] = ROAS_d / ROAS_anchorDay
+    const appRatio = {};
+    for(const [d,v] of Object.entries(appDayVals)){
+      appRatio[+d] = parseFloat((v/anchorVal).toFixed(6));
+    }
+
+    // Detect renewal spikes
+    const sortedDays = Object.keys(appDayVals).map(Number).sort((a,b)=>a-b);
+    const increments = [];
+    for(let i=1;i<sortedDays.length;i++){
+      const d=sortedDays[i], dp=sortedDays[i-1];
+      increments.push({d, inc: appDayVals[d]-appDayVals[dp]});
+    }
+    const avgInc = increments.reduce((s,x)=>s+Math.abs(x.inc),0)/increments.length;
+    const renewalDays = increments.filter(x=>x.inc>avgInc*2.5).map(x=>x.d);
+
+    // Historical D2/D7 ratio for early signal baseline (iOS)
+    let d2d7ratio = null;
+    if(platform==='ios' && appDayVals[2] && appDayVals[7]){
+      d2d7ratio = parseFloat((appDayVals[2]/appDayVals[7]).toFixed(5));
+    }
+
+    // GEO level
+    let geoMult=null, globalMult=null, geoCount=0;
+    if(trainState.geoCSV){
+      geoMult = {};
+      const minUsers = 200;
+      for(const row of trainState.geoCSV){
+        const geo = row['Ltv Country'];
+        const users = parseInt(row['Users'])||0;
+        if(!geo || users<minUsers) continue;
+        const dayVals = extractDayVals(row);
+        const anchor = dayVals[anchorDay];
+        if(!anchor || anchor===0) continue;
+        const mults = {};
+        for(const d of [7,14,30,60,90]){
+          if(dayVals[d]) mults[d] = parseFloat((dayVals[d]/anchor).toFixed(5));
+        }
+        if(Object.keys(mults).length>0){
+          geoMult[geo]={u:users, t:users>=5000?'HIGH':users>=500?'MED':'LOW', m:mults};
+          geoCount++;
+        }
+      }
+      globalMult={};
+      for(const d of [7,14,30,60,90]){
+        let ws=0,tot=0;
+        for(const g of Object.values(geoMult)){
+          if(g.m[d]){ws+=g.m[d]*g.u;tot+=g.u;}
+        }
+        if(tot>0) globalMult[d]=parseFloat((ws/tot).toFixed(5));
+      }
+    }
+
+    // Media Source level
+    let sourceMult=null, srcCount=0;
+    if(trainState.sourceCSV){
+      sourceMult={};
+      const srcCol=trainState.sourceCol;
+      const minUsers=100;
+      // Group rows by media source
+      const bySource={};
+      for(const row of trainState.sourceCSV){
+        const src=row[srcCol]; if(!src) continue;
+        if(!bySource[src]) bySource[src]=[];
+        bySource[src].push(row);
+      }
+      for(const [src,rows] of Object.entries(bySource)){
+        // Aggregate: pick row with most users, or sum if multiple cohorts
+        const users=rows.reduce((s,r)=>s+(parseInt(r['Users'])||0),0);
+        if(users<minUsers) continue;
+        // Use first row's day values (or largest cohort)
+        const mainRow=rows.sort((a,b)=>(parseInt(b['Users'])||0)-(parseInt(a['Users'])||0))[0];
+        const dayVals=extractDayVals(mainRow);
+        if(platform==='ios'){
+          // iOS SSOT: store D2 and D7 raw ROAS values
+          const d2=dayVals[2], d7=dayVals[7];
+          if(d7){
+            const d2d7=d2&&d7?parseFloat((d2/d7).toFixed(5)):null;
+            sourceMult[src]={u:users,d2:d2||null,d7,d2d7,platform:'ios'};
+            srcCount++;
+          }
+        } else {
+          // Android: store ratio table anchored to D3
+          const anchor=dayVals[3]; if(!anchor||anchor===0) continue;
+          const mults={};
+          for(const d of [7,14,30,60,90]){
+            if(dayVals[d]) mults[d]=parseFloat((dayVals[d]/anchor).toFixed(5));
+          }
+          if(Object.keys(mults).length>0){
+            sourceMult[src]={u:users,m:mults,platform:'android'};
+            srcCount++;
+          }
+        }
+      }
+    }
+
+    const maxDay = Math.max(...Object.keys(appRatio).map(Number));
+    const users = parseInt(appRow['Users'])||0;
+    const cost = parseFloat(appRow['Cost'])||0;
+    const cpi = users>0?(cost/users).toFixed(2):'—';
+
+    // MAE
+    const maeVals=[];
+    for(const d of sortedDays){
+      if(d<=anchorDay) continue;
+      const pred = anchorVal*appRatio[d];
+      const actual = appDayVals[d];
+      if(actual) maeVals.push(Math.abs(actual-pred));
+    }
+    const mae = maeVals.length?(maeVals.reduce((a,b)=>a+b,0)/maeVals.length).toFixed(4):'—';
+
+    const models = loadModels();
+    const modelKey = name.toLowerCase().replace(/\s+/g,'_')+'_'+platform;
+    models[modelKey] = {
+      name, appId, modelKey, platform, anchorDay, d2d7ratio,
+      trainedAt: new Date().toISOString(),
+      users, cost, cpi:parseFloat(cpi),
+      maxDay, renewalDays,
+      appRatio, geoMult, globalMult, sourceMult,
+      stats:{mae:parseFloat(mae), geoCount, srcCount, anchorBaseline:anchorVal}
+    };
+    saveModels(models);
+
+    const platIcon = platform==='ios'?'🍎':'🤖';
+    resultEl.innerHTML=`<div class="upload-status us-ok">
+      ✓ Trained "${name}" ${platIcon} · Anchor D${anchorDay} · D1-D${maxDay} · ${geoCount} GEOs · ${srcCount} Sources · MAE ≈ ${mae}%
+    </div>`;
+
+    refreshAppList(); populateAppSelect(); updateTopbar(); clearTrainForm();
+  } catch(err){
+    resultEl.innerHTML=`<div class="upload-status us-err">✗ Error: ${err.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// APP LIST
+// ═══════════════════════════════════════════
+function refreshAppList(){
+  const models = loadModels();
+  const keys = Object.keys(models);
+  const el = document.getElementById('app-list');
+  if(keys.length===0){
+    el.innerHTML='<div class="empty"><span class="empty-icon">🤖</span>Chưa có model nào.</div>';
+    return;
+  }
+  el.innerHTML = keys.map(k=>{
+    const m=models[k];
+    const hasgeo = m.geoMult&&Object.keys(m.geoMult).length>0;
+    const isIOS = m.platform==='ios';
+    const dt = new Date(m.trainedAt).toLocaleDateString();
+    return `<div class="app-item">
+      <div style="font-size:22px">${isIOS?'':'🤖'}</div>
+      <svg style="width:22px;height:22px;flex-shrink:0;display:${isIOS?'block':'none'}" viewBox="0 0 24 24" fill="${isIOS?'#007aff':'#34c759'}"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+      <div style="flex:1">
+        <div class="ai-name">${m.name}
+          <span class="badge ${isIOS?'badge-ios':'badge-android'}" style="margin-left:6px">${isIOS?'iOS':'Android'}</span>
+          <span class="badge badge-muted" style="margin-left:4px">D${m.anchorDay||3} anchor</span>
+        </div>
+        <div class="ai-meta">${m.appId||'—'} · D1-D${m.maxDay} · ${m.stats?.geoCount||0} GEOs · MAE ±${m.stats?.mae||'—'}% · ${dt}</div>
+      </div>
+      <span class="badge ${hasgeo?'badge-accent':'badge-amber'}">${hasgeo?'App + GEO':'App only'}</span>
+      <button class="btn btn-outline btn-sm" onclick="showModelDetail('${k}')">Detail</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteModel('${k}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function showModelDetail(key){
+  const m=loadModels()[key]; if(!m) return;
+  document.getElementById('model-detail').style.display='';
+  document.getElementById('md-title').textContent=m.name+' — Model Detail';
+  const kdays=[1,m.anchorDay,7,14,30,60,90].filter((d,i,a)=>m.appRatio[d]&&a.indexOf(d)===i);
+  const rows=kdays.map(d=>`<tr>
+    <td>D${d}</td>
+    <td class="r" style="color:var(--muted)">${m.appRatio[d]?.toFixed(5)}×</td>
+    <td class="r clr-${roasColor(m.stats.anchorBaseline*m.appRatio[d])}">${(m.stats.anchorBaseline*m.appRatio[d]).toFixed(2)}%</td>
+    <td style="font-size:10px;color:var(--muted)">${m.renewalDays?.includes(d)?'⚡ renewal':''}</td>
+  </tr>`).join('');
+  document.getElementById('md-body').innerHTML=`
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.8">
+      Users: ${m.users?.toLocaleString()||'—'} · Cost: $${m.cost?.toLocaleString()||'—'} · CPI: $${m.cpi||'—'} · Anchor D${m.anchorDay||3}=${m.stats?.anchorBaseline?.toFixed(2)||'—'}%
+      ${m.d2d7ratio?` · D2/D7 ratio: ${m.d2d7ratio}×`:''}
+    </div>
+    <table class="dt"><thead><tr><th>Day</th><th class="r">Ratio</th><th class="r">ROAS @ baseline</th><th>Note</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+function deleteModel(key){
+  if(!confirm(`Delete "${key}"?`)) return;
+  const m=loadModels(); delete m[key]; saveModels(m);
+  refreshAppList(); populateAppSelect(); updateTopbar();
+  document.getElementById('model-detail').style.display='none';
+}
+
+function clearTrainForm(){
+  document.getElementById('tr-appname').value='';
+  document.getElementById('tr-appid').value='';
+  trainState={appCSV:null,geoCSV:null,sourceCSV:null,sourceCol:null,platform:'android',anchorDay:3};
+  document.querySelectorAll('.plat-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelector('.plat-btn.android').classList.add('on');
+  document.getElementById('anchor-day-field').style.display='none';
+  document.querySelectorAll('.anchor-day-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.anchor-day-btn')[1].classList.add('on');
+  showStatus('us-app','pending','Chưa có file');
+  showStatus('us-geo','pending','Chưa có file (optional)');
+  showStatus('us-src','pending','Chưa có file (optional)');
+  document.getElementById('train-result').innerHTML='';
+  document.querySelectorAll('.upload-zone input[type=file]').forEach(el=>el.value='');
+}
+
+function exportModels(){
+  const blob=new Blob([JSON.stringify(loadModels(),null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`ua_roas_models_${new Date().toISOString().slice(0,10)}.json`; a.click();
+}
+
+function importModels(e){
+  const f=e.target.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      saveModels({...loadModels(),...data});
+      refreshAppList(); populateAppSelect(); updateTopbar();
+      alert(`Imported ${Object.keys(data).length} model(s).`);
+    } catch(err){ alert('Import failed: '+err.message); }
+  };
+  reader.readAsText(f);
+}
+
+// ═══════════════════════════════════════════
+// PREDICT STATE
+// ═══════════════════════════════════════════
+let result = null;
+let charts = {};
+
+function populateAppSelect(){
+  const models=loadModels(), sel=document.getElementById('sel-app'), cur=sel.value;
+  sel.innerHTML=Object.keys(models).length===0
+    ?'<option value="">— no models trained —</option>'
+    :Object.entries(models).map(([k,m])=>{
+        const icon=m.platform==='ios'?'🍎':'🤖';
+        return `<option value="${k}">${icon} ${m.name} (D${m.anchorDay||3} anchor)</option>`;
+      }).join('');
+  if(cur&&models[cur]) sel.value=cur;
+  if(sel.value) onAppSelect();
+}
+
+function onAppSelect(){
+  const key=document.getElementById('sel-app').value; if(!key) return;
+  const m=loadModels()[key]; if(!m) return;
+  const isIOS=m.platform==='ios';
+  const anchorDay=m.anchorDay||3;
+
+  // Update anchor label — Android: D3 is early signal anchor; iOS: anchorDay
+  if(isIOS){
+    document.getElementById('anchor-label').textContent=`ROAS D${anchorDay} — app level (%)`;
+    document.getElementById('inp-anchor').placeholder=`e.g. ${anchorDay===2?'48.20':'98.40'}`;
+    const hint=document.getElementById('anchor-hint');
+    hint.style.display='';
+    hint.textContent='iOS: app level — nhập bất kỳ D nào có sẵn.';
+  } else {
+    document.getElementById('anchor-label').textContent='ROAS D3 — app level · early signal (%)';
+    document.getElementById('inp-anchor').placeholder='e.g. 106.81';
+    const hint=document.getElementById('anchor-hint');
+    hint.style.display='';
+    hint.innerHTML='Android: D3 = early signal anchor. Điền actual ROAS bên dưới để improve prediction.';
+  }
+
+  // Update Actual ROAS section hint
+  const anchorHint=document.getElementById('anchor-section-hint');
+  if(isIOS){
+    anchorHint.textContent='iOS: nhập actual ROAS bất kỳ D → recalibrate từ D đó trở đi.';
+  } else {
+    anchorHint.innerHTML='Android: D3 là early signal. Điền actual ROAS (D7, D14, D30...) khi có → model tự cải thiện predict.';
+  }
+
+  // GEO hint
+  const geoHint=document.getElementById('geo-hint');
+  geoHint.style.display='';
+  if(isIOS){
+    geoHint.innerHTML='iOS: nhập <strong>D2 &amp; D7</strong> từ SSOT cho từng GEO.';
+  } else {
+    geoHint.textContent='Android: nhập ROAS theo D bất kỳ cho từng GEO.';
+  }
+
+  // Show/hide source section (iOS only)
+  document.getElementById('source-section').style.display=isIOS?'':'none';
+  if(isIOS) buildSourceRows();
+
+  buildGeoRows(m);
+  buildAnchorRows(m);
+
+  const icon=isIOS?'🍎':'🤖';
+  document.getElementById('model-box').innerHTML=`
+    <strong>${m.name}</strong> ${icon}<br>
+    Platform: ${isIOS?'iOS':'Android'} · ${isIOS?`SSOT anchor D${anchorDay}`:'Early signal D3'}<br>
+    D1-D${m.maxDay} · ${m.stats?.geoCount||0} GEOs<br>
+    MAE ±${m.stats?.mae||'—'}% · Renewal: [${m.renewalDays?.slice(0,4).join(',')||'—'}...]
+    ${isIOS&&m.d2d7ratio?`<br>D2/D7 hist ratio: ${m.d2d7ratio}×`:''}`;
+}
+
+// ═══════════════════════════════════════════
+// SOURCE INPUTS
+// ═══════════════════════════════════════════
+function buildSourceRows(){
+  document.getElementById('source-rows').innerHTML=SOURCES.map(s=>`
+    <div class="source-row">
+      <div class="source-header">
+        <div class="source-dot" style="background:${s.color}"></div>
+        <div class="source-name">${s.name}</div>
+      </div>
+      <div class="source-inputs">
+        <div class="source-field">
+          <label>D2 ROAS (%)</label>
+          <input type="number" id="src-${s.id}-d2" step="0.01" min="0" placeholder="—"/>
+        </div>
+        <div class="source-field">
+          <label>D7 ROAS (%)</label>
+          <input type="number" id="src-${s.id}-d7" step="0.01" min="0" placeholder="—"/>
+        </div>
+        <div class="source-field">
+          <label>Spend ($)</label>
+          <input type="number" id="src-${s.id}-spend" step="100" min="0" placeholder="—"/>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function getSourceInputs(){
+  const out={};
+  for(const s of SOURCES){
+    const d2=parseFloat(document.getElementById(`src-${s.id}-d2`)?.value)||null;
+    const d7=parseFloat(document.getElementById(`src-${s.id}-d7`)?.value)||null;
+    const spend=parseFloat(document.getElementById(`src-${s.id}-spend`)?.value)||0;
+    if(d7!=null) out[s.id]={d2,d7,spend,...s};
+  }
+  return out;
+}
+
+function clearSources(){
+  SOURCES.forEach(s=>{
+    ['d2','d7','spend'].forEach(f=>{
+      const el=document.getElementById(`src-${s.id}-${f}`);
+      if(el) el.value='';
+    });
+  });
+}
+
+// ═══════════════════════════════════════════
+// ANCHOR HELPERS
+// ═══════════════════════════════════════════
+const ANCHOR_DAYS_ANDROID=[7,10,14,17,21,30];
+const ANCHOR_DAYS_IOS=[14,21,30,45,60];
+
+function buildAnchorRows(m){
+  const el=document.getElementById('anchor-rows');
+  if(!m){el.innerHTML='<div style="font-size:11px;color:var(--faint)">Chọn app để xem.</div>';return;}
+  const days=m.platform==='ios'?ANCHOR_DAYS_IOS:ANCHOR_DAYS_ANDROID;
+  el.innerHTML=days.filter(d=>m.appRatio[d]).map(d=>`
+    <div class="anchor-row">
+      <div class="anchor-day">D${d}</div>
+      <div class="anchor-base">base: <span id="anc-base-${d}">—</span></div>
+      <input class="anchor-input" type="number" id="anc-${d}" step="0.01" min="0" max="9999"
+        placeholder="actual" oninput="onAnchorInput(${d},this)"/>
+    </div>`).join('');
+  updateAnchorBases();
+}
+
+function onAnchorInput(day,el){
+  el.style.borderColor=el.value?'var(--accent)':'var(--border)';
+  updateAnchorStatus();
+}
+
+function updateAnchorBases(){
+  const anchor=parseFloat(document.getElementById('inp-anchor').value)||0;
+  const key=document.getElementById('sel-app').value; if(!key||!anchor) return;
+  const m=loadModels()[key]; if(!m) return;
+  const days=m.platform==='ios'?ANCHOR_DAYS_IOS:ANCHOR_DAYS_ANDROID;
+  days.forEach(d=>{
+    const el=document.getElementById(`anc-base-${d}`);
+    if(el&&m.appRatio[d]) el.textContent=(anchor*m.appRatio[d]).toFixed(2)+'%';
+  });
+  updateAnchorStatus();
+}
+
+function updateAnchorStatus(){
+  const anchors=getAnchorInputs();
+  const el=document.getElementById('anchor-status');
+  const count=Object.keys(anchors).length;
+  if(count===0){el.textContent='';return;}
+  el.innerHTML=`<span style="color:var(--green);font-weight:600">✓ ${count} anchor(s): ${Object.entries(anchors).map(([d,v])=>`D${d}=${v.toFixed(1)}%`).join(' · ')}</span>`;
+}
+
+function getAnchorInputs(){
+  const out={};
+  const key=document.getElementById('sel-app').value;
+  const m=key?loadModels()[key]:null;
+  const days=m?.platform==='ios'?ANCHOR_DAYS_IOS:ANCHOR_DAYS_ANDROID;
+  days.forEach(d=>{
+    const el=document.getElementById(`anc-${d}`);
+    if(el&&el.value!=''){const v=parseFloat(el.value);if(!isNaN(v)&&v>0)out[d]=v;}
+  });
+  return out;
+}
+
+function clearAnchors(){
+  [...ANCHOR_DAYS_ANDROID,...ANCHOR_DAYS_IOS].forEach(d=>{
+    const el=document.getElementById(`anc-${d}`);
+    if(el){el.value='';el.style.borderColor='var(--border)';}
+  });
+  document.getElementById('anchor-status').textContent='';
+}
+
+// ═══════════════════════════════════════════
+// RECALIBRATION ENGINE
+// ═══════════════════════════════════════════
+function recalibrate(appRatio, anchorVal, anchors){
+  const days=Object.keys(appRatio).map(Number).sort((a,b)=>a-b);
+  const anchorDays=Object.keys(anchors).map(Number).sort((a,b)=>a-b);
+  const baseline={};
+  days.forEach(d=>baseline[d]=parseFloat((anchorVal*appRatio[d]).toFixed(4)));
+  if(anchorDays.length===0) return {recal:baseline,baseline,factors:{},activeAnchor:{}};
+  const recal={},factors={},activeAnchor={};
+  days.forEach(d=>{
+    const valid=anchorDays.filter(a=>a<=d&&baseline[a]);
+    if(valid.length===0){recal[d]=baseline[d];activeAnchor[d]=null;return;}
+    const a=valid[valid.length-1];
+    const cf=anchors[a]/baseline[a];
+    factors[d]=parseFloat(cf.toFixed(5));
+    activeAnchor[d]=a;
+    recal[d]=parseFloat((baseline[d]*cf).toFixed(2));
+  });
+  return {recal,baseline,factors,activeAnchor};
+}
+
+// ═══════════════════════════════════════════
+// PREDICT
+// ═══════════════════════════════════════════
+function predict(){
+  const key=document.getElementById('sel-app').value;
+  if(!key){alert('Chọn app trước.');return;}
+  const models=loadModels(), m=models[key];
+  if(!m) return;
+
+  const anchorVal=parseFloat(document.getElementById('inp-anchor').value)||0;
+  const spend=parseFloat(document.getElementById('inp-spend').value)||0;
+  if(!anchorVal){alert(`Nhập ROAS D${m.anchorDay||3}.`);return;}
+
+  const anchors=getAnchorInputs();
+  const {recal:appPred,baseline:appBaseline,factors:appFactors,activeAnchor}=recalibrate(m.appRatio,anchorVal,anchors);
+
+  // Source predictions (iOS)
+  const sourceInputs=getSourceInputs();
+  const sourcePred={};
+  const d7Total=anchorVal*(m.anchorDay===7?1:m.appRatio[7]||1); // D7 app-level baseline
+
+  for(const [sid,src] of Object.entries(sourceInputs)){
+    if(!src.d7) continue;
+    // Source weight: how this source's D7 compares to app-level D7
+    const srcWeight=src.d7/d7Total;
+    // Predict D14/D30/D60/D90 via weight applied to app-level prediction
+    const preds={};
+    for(const d of [14,30,60,90]){
+      if(appPred[d]){
+        preds[d]=parseFloat((appPred[d]*srcWeight).toFixed(2));
+      }
+    }
+    // D2/D7 ratio early signal
+    let earlySignal=null;
+    if(src.d2&&src.d7&&m.d2d7ratio){
+      const srcD2D7=src.d2/src.d7;
+      const diff=srcD2D7-m.d2d7ratio;
+      const pct=(diff/m.d2d7ratio)*100;
+      earlySignal={srcRatio:srcD2D7,histRatio:m.d2d7ratio,diffPct:parseFloat(pct.toFixed(1)),flag:Math.abs(pct)>15};
+    }
+    sourcePred[sid]={...src,srcWeight,preds,earlySignal};
+  }
+
+  // GEO predictions
+  const geoInputs={};
+  if(m.geoMult){
+    if(m.platform==='ios'){
+      // iOS: read D2 + D7, use D7 as primary anchor (SSOT), D2 for early signal
+      for(const geo of Object.keys(m.geoMult)){
+        const elD2=document.getElementById(`g-${geo}-d2`);
+        const elD7=document.getElementById(`g-${geo}-d7`);
+        const d2=elD2&&elD7&&elD2.value?parseFloat(elD2.value):null;
+        const d7=elD7&&elD7.value?parseFloat(elD7.value):null;
+        if(d7!=null) geoInputs[geo]={anchor:d7,d2,d7,type:'ios'};
+      }
+    } else {
+      // Android: any D, single input
+      for(const geo of Object.keys(m.geoMult)){
+        const el=document.getElementById(`g-${geo}`);
+        if(el&&el.value!='') geoInputs[geo]={anchor:parseFloat(el.value),type:'android'};
+      }
+    }
+  }
+  const geoPred={};
+  for(const [geo,gv] of Object.entries(geoInputs)){
+    const gd=m.geoMult?.[geo];
+    const anchor=gv.anchor;
+    const preds={};
+    for(const d of [7,14,30,60,90]){
+      const mult=gd?.m?.[d]??m.globalMult?.[d];
+      if(mult) preds[d]={roas:+(anchor*mult).toFixed(2),mult,src:gd?.m?.[d]?'GEO':'GLOBAL'};
+    }
+    // iOS: D2/D7 early signal for GEO
+    let earlySignal=null;
+    if(gv.type==='ios'&&gv.d2&&gv.d7&&m.d2d7ratio){
+      const srcRatio=gv.d2/gv.d7;
+      const diff=srcRatio-m.d2d7ratio;
+      const pct=(diff/m.d2d7ratio)*100;
+      earlySignal={srcRatio:parseFloat(srcRatio.toFixed(3)),histRatio:m.d2d7ratio,diffPct:parseFloat(pct.toFixed(1)),flag:Math.abs(pct)>15};
+    }
+    geoPred[geo]={anchor,tier:gd?.t||'GLOBAL',users:gd?.u||0,preds,earlySignal,d2:gv.d2||null,d7:gv.d7||null};
+  }
+
+  const hasAnchors=Object.keys(anchors).length>0;
+  const hasSources=Object.keys(sourcePred).length>0;
+  result={m,anchorVal,spend,appPred,appBaseline,appFactors,activeAnchor,anchors,hasAnchors,sourcePred,hasSources,geoPred};
+
+  // Status bar
+  document.getElementById('statusbar').style.display='flex';
+  const anchorDay=m.anchorDay||3;
+  const isIOS=m.platform==='ios';
+  document.getElementById('sb-app').textContent=m.name+' · '+(isIOS?'iOS':'Android');
+  document.getElementById('sb-anchor').textContent=isIOS?`D${anchorDay}: ${anchorVal}% (SSOT anchor)`:`D3: ${anchorVal}% (early signal)`;
+  document.getElementById('sb-spend').textContent=spend>0?`$${spend.toLocaleString()}`:'No spend';
+  document.getElementById('sb-src').textContent=isIOS?`Sources: ${Object.keys(sourcePred).length}`:'';
+  document.getElementById('sb-geo-ct').textContent=`GEO: ${Object.keys(geoInputs).length}`;
+  document.getElementById('sb-mae').textContent=hasAnchors?`Anchors: ${Object.keys(anchors).length} · MAE ±${m.stats?.mae||'—'}%`:`MAE ±${m.stats?.mae||'—'}%`;
+
+  renderAll();
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function roasColor(v){return v>=120?'clr-green':v>=100?'clr-amber':'clr-red';}
+function fmt$(v){if(v==null)return'—';return v>=0?`$${v.toLocaleString('en-US',{maximumFractionDigits:0})}`:`-$${Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:0})}`;}
+
+function renderAll(){renderOverview();renderSource();renderChart();renderGeo();renderTable();}
+
+function renderOverview(){
+  const {m,appPred,appBaseline,hasAnchors,anchors,spend,anchorVal,activeAnchor}=result;
+  document.getElementById('ov-empty').style.display='none';
+  document.getElementById('ov-body').style.display='';
+  const anchorDay=m.anchorDay||3;
+
+  document.getElementById('kpi-cards').innerHTML=[7,14,30,60,90].map(d=>{
+    const roas=appPred[d]; if(roas==null) return '';
+    const base=appBaseline?.[d];
+    const delta=hasAnchors&&base&&base!==roas?roas-base:null;
+    const rev=spend?+(spend*roas/100).toFixed(0):null;
+    const prof=rev!=null?rev-spend:null;
+    const isRn=m.renewalDays?.includes(d);
+    const anc=activeAnchor?.[d];
+    return `<div class="kpi${d===30?' focal':''}">
+      <div class="k-day">D${d}${isRn?' ⚡':''}${anc?` <span style="font-size:9px;color:var(--faint)">↑D${anc}</span>`:''}</div>
+      <div class="k-roas ${roasColor(roas)}">${roas.toFixed(1)}%</div>
+      ${delta!=null?`<div class="k-delta ${delta>=0?'clr-green':'clr-red'}">${delta>=0?'+':''}${delta.toFixed(1)}% recal</div>`:''}
+      ${rev!=null?`<div class="k-rev">${fmt$(rev)}</div>`:''}
+      ${prof!=null?`<div class="k-profit ${prof>=0?'clr-green':'clr-red'}">${prof>=0?'+':''}${fmt$(prof)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('be-cards').innerHTML=[100,110,120,130].map(tgt=>{
+    let beDay=null,beDayBase=null;
+    for(const d of Object.keys(appPred).map(Number).sort((a,b)=>a-b)){
+      if(appPred[d]>=tgt&&!beDay) beDay=d;
+    }
+    if(hasAnchors&&appBaseline){
+      for(const d of Object.keys(appBaseline).map(Number).sort((a,b)=>a-b)){
+        if(appBaseline[d]>=tgt){beDayBase=d;break;}
+      }
+    }
+    const rev=beDay&&spend?fmt$(+(spend*tgt/100).toFixed(0)):null;
+    const diff=hasAnchors&&beDayBase&&beDay?beDay-beDayBase:null;
+    return `<div class="be${beDay?' hit':''}">
+      <div class="be-tgt">ROAS ${tgt}%</div>
+      <div class="be-day ${beDay?'':'clr-red'}">${beDay?`D${beDay}`:'N/A'}</div>
+      ${diff!=null?`<div class="be-sub ${diff<=0?'clr-green':'clr-red'}">${diff<=0?'':'+'}${diff}d vs base</div>`:''}
+      ${rev?`<div class="be-sub">${rev}</div>`:''}
+    </div>`;
+  }).join('');
+
+  if(spend>0){
+    const kd=[7,14,30,60,90];
+    document.getElementById('rev-wrap').innerHTML=`
+      <table class="dt"><thead><tr>
+        <th>Day</th><th class="r">ROAS</th>
+        ${hasAnchors?'<th class="r">Base</th><th class="r">Δ</th>':''}
+        <th class="r">Revenue</th><th class="r">Profit</th><th class="r">Δ vs D${anchorDay}</th>
+      </tr></thead><tbody>${kd.map(d=>{
+        if(appPred[d]==null) return '';
+        const roas=appPred[d],rev=+(spend*roas/100).toFixed(0),prof=rev-spend;
+        const base=appBaseline?.[d];
+        const delta=hasAnchors&&base?+(roas-base).toFixed(2):null;
+        return `<tr>
+          <td>D${d}</td>
+          <td class="r bold ${roasColor(roas)}">${roas.toFixed(2)}%</td>
+          ${hasAnchors?`<td class="r" style="color:var(--muted)">${base?.toFixed(2)||'—'}%</td>
+          <td class="r ${delta!=null?(delta>=0?'clr-green':'clr-red'):''}">${delta!=null?(delta>=0?'+':'')+delta.toFixed(2)+'%':'—'}</td>`:''}
+          <td class="r">${fmt$(rev)}</td>
+          <td class="r ${prof>=0?'clr-green':'clr-red'}">${prof>=0?'+':''}${fmt$(prof)}</td>
+          <td class="r" style="color:var(--muted)">${((roas-anchorVal)/anchorVal*100).toFixed(1)}%</td>
+        </tr>`;
+      }).join('')}</tbody></table>`;
+  } else {
+    document.getElementById('rev-wrap').innerHTML='<p style="color:var(--muted);font-size:11px">Nhập Spend để xem Revenue & Profit.</p>';
+  }
+}
+
+function renderSource(){
+  const {sourcePred,hasSources,appPred,spend}=result;
+  if(!hasSources){
+    document.getElementById('src-empty').style.display='';
+    document.getElementById('src-body').style.display='none';
+    return;
+  }
+  document.getElementById('src-empty').style.display='none';
+  document.getElementById('src-body').style.display='';
+
+  const entries=Object.entries(sourcePred);
+
+  document.getElementById('src-cards').innerHTML=entries.map(([sid,s])=>{
+    const weight=(s.srcWeight*100).toFixed(1);
+    const isOver=s.srcWeight>1;
+    const d30=s.preds[30];
+    const d60=s.preds[60];
+    const d90=s.preds[90];
+    const rev30=s.spend&&d30?+(s.spend*d30/100).toFixed(0):null;
+    const prof30=rev30!=null?rev30-s.spend:null;
+    const earlyWarn=s.earlySignal?.flag;
+    return `<div class="sb-card">
+      <div class="sb-header">
+        <div class="sb-dot" style="background:${s.color}"></div>
+        <div class="sb-name">${s.name}</div>
+        <span class="sb-weight badge ${isOver?'badge-accent':'badge-muted'}">${isOver?'▲':s.srcWeight<0.9?'▼':'='} ${weight}% vs app avg</span>
+      </div>
+      ${earlyWarn?`<div class="sb-warning">⚠️ D2/D7 ratio lệch ${s.earlySignal.diffPct>0?'+':''}${s.earlySignal.diffPct}% vs historical — monitor closely</div>`:''}
+      <div class="sb-kpis">
+        ${d30!=null?`<div class="sb-kpi"><div class="sb-kpi-label">D30</div><div class="sb-kpi-val ${roasColor(d30)}">${d30.toFixed(1)}%</div></div>`:''}
+        ${d60!=null?`<div class="sb-kpi"><div class="sb-kpi-label">D60</div><div class="sb-kpi-val ${roasColor(d60)}">${d60.toFixed(1)}%</div></div>`:''}
+        ${d90!=null?`<div class="sb-kpi"><div class="sb-kpi-label">D90</div><div class="sb-kpi-val ${roasColor(d90)}">${d90.toFixed(1)}%</div></div>`:''}
+      </div>
+      ${s.spend>0&&d30!=null?`<div class="sb-financials">
+        <span class="sb-fin-label">Spend</span><span class="sb-fin-val">${fmt$(s.spend)}</span>
+        <span class="sb-fin-label">Rev D30</span><span class="sb-fin-val">${fmt$(rev30)}</span>
+        <span class="sb-fin-label">Profit D30</span><span class="sb-fin-val ${prof30!=null?(prof30>=0?'clr-green':'clr-red'):''}">${prof30!=null?(prof30>=0?'+':'')+fmt$(prof30):'—'}</span>
+      </div>`:''}
+    </div>`;
+  }).join('');
+
+  // Source comparison table
+  document.getElementById('src-table-wrap').innerHTML=`
+    <table class="dt">
+      <thead><tr>
+        <th>Source</th><th class="r">D7 Input</th><th class="r">Weight vs App</th>
+        <th class="r">D2/D7 Ratio</th><th class="r">D30</th><th class="r">D60</th><th class="r">D90</th>
+        <th class="r">Spend</th><th class="r">Rev D30</th><th class="r">Profit D30</th>
+      </tr></thead>
+      <tbody>${entries.map(([sid,s])=>{
+        const d30=s.preds[30],d60=s.preds[60],d90=s.preds[90];
+        const rev30=s.spend&&d30?+(s.spend*d30/100).toFixed(0):null;
+        const prof30=rev30!=null?rev30-s.spend:null;
+        const srcRatio=s.d2&&s.d7?(s.d2/s.d7).toFixed(3):'—';
+        const earlyWarn=s.earlySignal?.flag;
+        return `<tr>
+          <td><span class="source-dot" style="background:${s.color};display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px"></span>
+            <strong>${s.name}</strong>${earlyWarn?' <span class="warn-flag">⚠️ signal</span>':''}</td>
+          <td class="r">${s.d7.toFixed(2)}%</td>
+          <td class="r ${s.srcWeight>=1?'clr-green':'clr-red'}">${(s.srcWeight*100).toFixed(1)}%</td>
+          <td class="r" style="color:var(--muted)">${srcRatio}${s.earlySignal?` (hist: ${s.earlySignal.histRatio})`:''}</td>
+          <td class="r ${d30?roasColor(d30):''}">${d30?.toFixed(2)||'—'}%</td>
+          <td class="r ${d60?roasColor(d60):''}">${d60?.toFixed(2)||'—'}%</td>
+          <td class="r ${d90?roasColor(d90):''}">${d90?.toFixed(2)||'—'}%</td>
+          <td class="r">${fmt$(s.spend||null)}</td>
+          <td class="r">${fmt$(rev30)}</td>
+          <td class="r ${prof30!=null?(prof30>=0?'clr-green':'clr-red'):''}">${prof30!=null?(prof30>=0?'+':'')+fmt$(prof30):'—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+
+  // Source bar chart
+  if(charts.source) charts.source.destroy();
+  charts.source=new Chart(document.getElementById('c-source'),{
+    type:'bar',
+    data:{
+      labels:entries.map(([,s])=>s.name),
+      datasets:[{
+        label:'D30 ROAS',
+        data:entries.map(([,s])=>s.preds[30]||0),
+        backgroundColor:entries.map(([,s])=>s.color+'cc'),
+        borderColor:entries.map(([,s])=>s.color),
+        borderWidth:1.5,borderRadius:6,
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{family:'-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif',size:11}}},
+        y:{grid:{color:'#eee'},ticks:{font:{family:'-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif',size:11}}}
+      }
+    }
+  });
+}
+
+function renderChart(){
+  const {m,appPred,appBaseline,hasAnchors,anchors,sourcePred,hasSources,spend}=result;
+  ['roas','rev'].forEach(k=>{if(charts[k]){charts[k].destroy();delete charts[k];}});
+  const days=Object.keys(appPred).map(Number).sort((a,b)=>a-b);
+  const chartOpts={
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:true,labels:{font:{family:'-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif',size:10},boxWidth:12,padding:16}}},
+    scales:{
+      x:{grid:{color:'#eee'},ticks:{font:{family:'-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif',size:10},maxTicksLimit:12}},
+      y:{grid:{color:'#eee'},ticks:{font:{family:'-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif',size:10}}}
+    }
+  };
+
+  const datasets=[
+    {label:'App (Recalibrated)',data:days.map(d=>appPred[d]),borderColor:m.platform==='ios'?'#007aff':'#34c759',
+     borderWidth:2.5,pointRadius:days.map(d=>m.renewalDays?.includes(d)?4:0),
+     pointBackgroundColor:m.platform==='ios'?'#007aff':'#34c759',fill:false,tension:0.1},
+    {label:'Break-even 100%',data:days.map(()=>100),borderColor:'#e5e7eb',borderWidth:1,
+     borderDash:[4,3],pointRadius:0,fill:false}
+  ];
+  if(hasAnchors&&appBaseline){
+    datasets.splice(1,0,{
+      label:'App (Baseline D'+( m.anchorDay||3)+' only)',
+      data:days.map(d=>appBaseline[d]),
+      borderColor:'#d1d5db',borderWidth:1.5,borderDash:[6,3],pointRadius:0,fill:false,tension:0.1
+    });
+    datasets.push({
+      label:'Actual anchors',data:days.map(d=>anchors[d]??null),
+      borderColor:'transparent',pointRadius:days.map(d=>anchors[d]?7:0),
+      pointBackgroundColor:'#34c759',pointBorderColor:'#fff',pointBorderWidth:2,fill:false,showLine:false
+    });
+  }
+  // Source curves on chart
+  if(hasSources){
+    for(const [sid,s] of Object.entries(sourcePred)){
+      const sdays=Object.keys(s.preds).map(Number).sort((a,b)=>a-b);
+      datasets.push({
+        label:s.name,data:days.map(d=>s.preds[d]??null),
+        borderColor:s.color+'99',borderWidth:1.5,borderDash:[4,2],
+        pointRadius:0,fill:false,tension:0.1
+      });
+    }
+  }
+  charts.roas=new Chart(document.getElementById('c-roas'),{
+    type:'line',data:{labels:days.map(d=>`D${d}`),datasets},options:chartOpts
+  });
+
+  if(spend>0){
+    const kd=[7,14,30,60,90];
+    charts.rev=new Chart(document.getElementById('c-rev'),{
+      type:'bar',
+      data:{labels:kd.map(d=>`D${d}`),datasets:[
+        {label:'Revenue (recal)',data:kd.map(d=>+(spend*appPred[d]/100).toFixed(0)),
+         backgroundColor:'#4f63f566',borderColor:'#4f63f5',borderWidth:1.5,borderRadius:5},
+        {label:'Spend',data:kd.map(()=>spend),backgroundColor:'#e5e7eb',borderRadius:5}
+      ]},
+      options:{...chartOpts,plugins:{legend:{display:true,labels:{font:{family:'-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif',size:10},boxWidth:12}}}}
+    });
+  }
+}
+
+function buildGeoRows(m){
+  const el=document.getElementById('geo-rows');
+  if(!m.geoMult||Object.keys(m.geoMult).length===0){
+    el.innerHTML='<div style="font-size:11px;color:var(--faint)">Model này không có GEO data.</div>';return;
+  }
+  const isIOS=m.platform==='ios';
+  const sorted=Object.entries(m.geoMult).sort((a,b)=>b[1].u-a[1].u);
+
+  if(isIOS){
+    // iOS: D2 + D7 from SSOT
+    el.innerHTML=`<div style="display:grid;grid-template-columns:32px 1fr 70px 70px;gap:6px;padding:4px 0 6px;border-bottom:1.5px solid var(--border2)">
+      <div style="font-size:9px;font-weight:700;color:var(--muted)">GEO</div>
+      <div style="font-size:9px;font-weight:700;color:var(--muted)">Users</div>
+      <div style="font-size:9px;font-weight:700;color:var(--ios);text-align:right">D2 SSOT</div>
+      <div style="font-size:9px;font-weight:700;color:var(--ios);text-align:right">D7 SSOT</div>
+    </div>`+sorted.map(([geo,d])=>`
+    <div style="display:grid;grid-template-columns:32px 1fr 70px 70px;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700">${geo}</div>
+      <div style="font-size:10px;color:var(--muted)">${(d.u/1000).toFixed(1)}K <span class="tag tag-${d.t[0].toLowerCase()}">${d.t[0]}</span></div>
+      <input class="anchor-input" type="number" id="g-${geo}-d2" step="0.01" min="0" max="9999" placeholder="D2"
+        oninput="this.style.borderColor=this.value?'var(--ios)':'var(--border)'"/>
+      <input class="anchor-input" type="number" id="g-${geo}-d7" step="0.01" min="0" max="9999" placeholder="D7"
+        oninput="this.style.borderColor=this.value?'var(--ios)':'var(--border)'"/>
+    </div>`).join('');
+  } else {
+    // Android: any D level
+    el.innerHTML=`<div style="display:grid;grid-template-columns:32px 1fr 18px 80px;gap:6px;padding:4px 0 6px;border-bottom:1.5px solid var(--border2)">
+      <div style="font-size:9px;font-weight:700;color:var(--muted)">GEO</div>
+      <div style="font-size:9px;font-weight:700;color:var(--muted)">Users</div>
+      <div></div>
+      <div style="font-size:9px;font-weight:700;color:var(--android);text-align:right">ROAS (any D)</div>
+    </div>`+sorted.map(([geo,d])=>`
+    <div style="display:grid;grid-template-columns:32px 1fr 18px 80px;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700">${geo}</div>
+      <div style="font-size:10px;color:var(--muted)">${(d.u/1000).toFixed(1)}K</div>
+      <span class="tag tag-${d.t[0].toLowerCase()}">${d.t[0]}</span>
+      <input class="anchor-input" type="number" id="g-${geo}" step="0.01" min="0" max="9999" placeholder="—"
+        oninput="this.style.borderColor=this.value?'var(--android)':'var(--border)'"/>
+    </div>`).join('');
+  }
+}
+
+function clearGeo(){
+  // Android: id=g-GEO; iOS: id=g-GEO-d2 and g-GEO-d7
+  document.querySelectorAll('[id^="g-"]').forEach(el=>{el.value='';el.style.borderColor='var(--border)';});
+}
+
+function renderGeo(){
+  const {geoPred,m}=result;
+  const entries=Object.entries(geoPred);
+  if(entries.length===0){
+    document.getElementById('geo-empty').style.display='';
+    document.getElementById('geo-body').style.display='none';return;
+  }
+  document.getElementById('geo-empty').style.display='none';
+  document.getElementById('geo-body').style.display='';
+  const sorted=entries.sort((a,b)=>(b[1].preds[30]?.roas||0)-(a[1].preds[30]?.roas||0));
+  const isIOS=m.platform==='ios';
+  const anchorDay=m.anchorDay||3;
+
+  document.getElementById('geo-tbl-body').innerHTML=sorted.map(([geo,d])=>{
+    const cells=[14,30,60,90].map(day=>{
+      const p=d.preds[day];
+      return p?`<td class="r ${roasColor(p.roas)}">${p.roas.toFixed(1)}%</td>`:'<td class="r" style="color:var(--faint)">—</td>';
+    }).join('');
+    const m30=d.preds[30];
+    const tc={'HIGH':'tag-h','MED':'tag-m','GLOBAL':'tag-g','LOW':'tag-l'}[d.tier]||'tag-g';
+    const earlyWarn=d.earlySignal?.flag;
+    const anchorLabel=isIOS?(d.d2!=null?`D2:${d.d2?.toFixed(1)}% / D7:${d.anchor?.toFixed(1)}%`:d.anchor?.toFixed(2)+'%'):d.anchor?.toFixed(2)+'%';
+    return `<tr>
+      <td class="bold">${geo}${earlyWarn?` <span class="warn-flag">⚠️ D2/D7</span>`:''}</td>
+      <td><span class="tag ${tc}">${d.tier}</span></td>
+      <td class="r" style="font-size:10px">${anchorLabel}</td>
+      ${cells}
+      <td class="r" style="color:var(--muted)">${m30?m30.mult.toFixed(4)+'×':'—'}</td>
+      <td style="font-size:10px;color:var(--muted)">${m30?.src||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  if(charts.geo) charts.geo.destroy();
+  charts.geo=new Chart(document.getElementById('c-geo'),{
+    type:'bar',
+    data:{
+      labels:sorted.map(([g])=>g),
+      datasets:[{label:'D30 ROAS',data:sorted.map(([,d])=>d.preds[30]?.roas||0),
+        backgroundColor:sorted.map(([,d])=>{const v=d.preds[30]?.roas||0;return v>=120?'#34c75999':v>=100?'#d97706':'#ff3b3099';}),
+        borderRadius:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{family:'-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif',size:10}}},
+        y:{grid:{color:'#eee'},ticks:{font:{family:'-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif',size:10}}}
+      }
+    }
+  });
+}
+
+function renderTable(){
+  const {m,appPred,appBaseline,appFactors,activeAnchor,hasAnchors,anchors,spend}=result;
+  document.getElementById('tbl-empty').style.display='none';
+  document.getElementById('full-tbl').style.display='';
+  const days=Object.keys(appPred).map(Number).sort((a,b)=>a-b);
+  document.getElementById('full-tbl-body').innerHTML=days.map(d=>{
+    const roas=appPred[d];
+    const base=appBaseline?.[d];
+    const cf=appFactors?.[d];
+    const anc=activeAnchor?.[d];
+    const isAnchor=anchors?.[d]!=null;
+    const rev=spend?+(spend*roas/100).toFixed(0):null;
+    const prof=rev!=null?rev-spend:null;
+    const isRn=m.renewalDays?.includes(d);
+    const delta=hasAnchors&&base&&base!==roas?roas-base:null;
+    return `<tr class="${isRn?'spike':''}${isAnchor?' anchor-pinned':''}">
+      <td class="bold">${isAnchor?'📍 ':''}D${d}${isRn?' ⚡':''}</td>
+      <td class="r" style="color:var(--muted)">${m.appRatio[d]?.toFixed(5)}×</td>
+      <td class="r" style="color:var(--muted)">${base?.toFixed(2)||'—'}%</td>
+      <td class="r bold ${roasColor(roas)}">${roas.toFixed(2)}%
+        ${delta!=null?`<span style="font-size:9px;margin-left:4px" class="${delta>=0?'clr-green':'clr-red'}">${delta>=0?'↑':'↓'}${Math.abs(delta).toFixed(1)}</span>`:''}
+      </td>
+      <td class="r">${rev!=null?fmt$(rev):'—'}</td>
+      <td class="r ${prof!=null?(prof>=0?'clr-green':'clr-red'):''}">${prof!=null?(prof>=0?'+':'')+fmt$(prof):'—'}</td>
+      <td style="font-size:10px;color:var(--muted)">
+        ${isAnchor?'<span style="color:var(--green);font-weight:700">ANCHOR</span> ':''}
+        ${anc&&!isAnchor?`cf=${cf?.toFixed(4)}× ↑D${anc}`:''}
+        ${isRn?'renewal':''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function mainTab(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById(`page-${id}`).classList.add('on');
+  btn.classList.add('on');
+}
+
+function subTab(id,btn){
+  document.querySelectorAll('.sub-pane').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById(`sp-${id}`).classList.add('on');
+  btn.classList.add('on');
+  if(id==='chart'&&result) renderChart();
+}
+
+function updateTopbar(){
+  const n=Object.keys(loadModels()).length;
+  document.getElementById('tb-right').textContent=n>0?`${n} model${n>1?'s':''} trained`:'No models trained';
+}
+
+// ═══════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════
+refreshAppList();
+populateAppSelect();
+updateTopbar();
+</script>
+</body>
+</html>
