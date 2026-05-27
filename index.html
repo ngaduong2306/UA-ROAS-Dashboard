@@ -205,7 +205,7 @@ input::placeholder{color:var(--faint)}
 .source-field input{font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border)}
 .source-field input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(79,99,245,.1)}
 
-/* Anchor rows */
+/* Anchor rows (legacy compat) */
 .anchor-row{
   display:grid;grid-template-columns:36px 1fr 80px;
   align-items:center;gap:6px;
@@ -222,6 +222,72 @@ input::placeholder{color:var(--faint)}
   width:100%;outline:none;transition:border-color .15s;
 }
 .anchor-input:focus{border-color:var(--accent)}
+
+/* ── Actual ROAS tabbed panel ── */
+.roas-tabs{display:flex;gap:0;border-bottom:1.5px solid var(--border);margin-bottom:0}
+.roas-tab{
+  flex:1;text-align:center;padding:8px 0;font-size:11px;font-weight:600;
+  color:var(--muted);cursor:pointer;border:none;background:none;
+  border-bottom:2px solid transparent;transition:all .15s;font-family:var(--sans);
+  letter-spacing:.02em;
+}
+.roas-tab:hover{color:var(--accent)}
+.roas-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.roas-tab-pane{display:none}
+.roas-tab-pane.on{display:block}
+
+/* D-row: each day is a clear row */
+.d-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06);
+  transition:background .1s;
+}
+.d-row:last-child{border:none}
+.d-row:hover{background:rgba(0,122,255,.03);border-radius:6px;margin:0 -4px;padding:8px 4px}
+.d-row-label{
+  width:36px;flex-shrink:0;font-size:12px;font-weight:700;color:var(--accent);
+}
+.d-row-base{
+  flex:1;font-size:11px;color:var(--muted);min-width:0;
+}
+.d-row-base .base-val{color:var(--text);font-weight:500}
+.d-row-input{
+  width:90px;flex-shrink:0;
+}
+.d-row-input input{
+  width:100%;border:1.5px solid var(--border);padding:7px 10px;
+  font-family:var(--sans);font-size:12px;font-weight:500;
+  background:var(--surface);text-align:right;border-radius:8px;
+  outline:none;transition:all .15s;
+  -webkit-appearance:none;-moz-appearance:textfield;
+}
+.d-row-input input::placeholder{color:var(--faint);font-weight:400}
+.d-row-input input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,122,255,.1)}
+.d-row-input input.has-val{border-color:var(--accent);background:var(--accent-light)}
+
+/* GEO selector */
+.geo-select-wrap{margin-bottom:10px}
+.geo-select{
+  width:100%;border:1.5px solid var(--border);padding:8px 12px;
+  font-family:var(--sans);font-size:12px;font-weight:500;color:var(--text);
+  background:var(--surface);border-radius:8px;outline:none;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2386868b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;
+  cursor:pointer;transition:border-color .15s;
+}
+.geo-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,122,255,.1)}
+.geo-badge-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.geo-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px 3px 6px;border-radius:20px;font-size:10px;font-weight:600;
+  background:var(--accent-light);color:var(--accent);border:1px solid var(--accent-border);
+  cursor:default;
+}
+.geo-badge .gbx{
+  cursor:pointer;font-size:12px;line-height:1;margin-left:2px;opacity:.6;
+}
+.geo-badge .gbx:hover{opacity:1}
 
 /* Model info box */
 .model-box{
@@ -552,25 +618,28 @@ input::placeholder{color:var(--faint)}
       <div class="source-grid" id="source-rows"></div>
     </div>
 
-    <!-- Actual anchors: Android = fill actual ROAS any D to improve prediction; iOS = same -->
-    <div class="lp-section" id="anchor-section">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <!-- Actual ROAS: Tabbed App / GEO -->
+    <div class="lp-section" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:0" id="roas-input-panel">
+      <div style="padding:10px 16px 0 16px;display:flex;justify-content:space-between;align-items:center">
         <div class="sec-label" style="margin:0">Actual ROAS <span style="font-weight:400;color:var(--faint)">(optional)</span></div>
-        <button class="btn btn-outline btn-sm" onclick="clearAnchors()">clear</button>
+        <button class="btn btn-outline btn-sm" onclick="clearAllRoasInputs()">clear</button>
       </div>
-      <p id="anchor-section-hint" style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.5">Nhập ROAS thực tế → model recalibrate từ anchor đó trở đi.</p>
-      <div id="anchor-rows"><div style="font-size:11px;color:var(--faint)">Chọn app để xem.</div></div>
-      <div id="anchor-status" style="margin-top:6px;font-size:10px"></div>
-    </div>
-
-    <!-- GEO inputs: Android = any D level; iOS = D2 + D7 from SSOT only -->
-    <div class="lp-section" style="flex:1;overflow-y:auto" id="geo-lp">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <div class="sec-label" style="margin:0">GEO Inputs <span style="font-weight:400;color:var(--faint)">(optional)</span></div>
-        <button class="btn btn-outline btn-sm" onclick="clearGeo()">clear</button>
+      <p id="roas-input-hint" style="font-size:10px;color:var(--muted);padding:4px 16px 0;line-height:1.5">Nhập ROAS thực tế → model recalibrate.</p>
+      <div class="roas-tabs" style="padding:0 16px;margin-top:8px">
+        <button class="roas-tab on" onclick="switchRoasTab('app',this)">App Level</button>
+        <button class="roas-tab" onclick="switchRoasTab('geo',this)">GEO Level</button>
       </div>
-      <p id="geo-hint" style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.5;display:none"></p>
-      <div id="geo-rows"><div style="font-size:11px;color:var(--faint)">Chọn app để xem GEO list.</div></div>
+      <div style="flex:1;overflow-y:auto;padding:8px 16px 12px">
+        <!-- APP TAB: vertical D rows -->
+        <div class="roas-tab-pane on" id="rtp-app">
+          <div id="app-d-rows"><div style="font-size:11px;color:var(--faint);padding:12px 0">Chọn app để xem.</div></div>
+          <div id="anchor-status" style="margin-top:6px;font-size:10px"></div>
+        </div>
+        <!-- GEO TAB: select GEO → show D rows for that GEO -->
+        <div class="roas-tab-pane" id="rtp-geo">
+          <div id="geo-panel-content"><div style="font-size:11px;color:var(--faint);padding:12px 0">Chọn app để xem GEO list.</div></div>
+        </div>
+      </div>
     </div>
 
     <div class="model-box" id="model-box">
@@ -1091,20 +1160,13 @@ function onAppSelect(){
   }
 
   // Update Actual ROAS section hint
-  const anchorHint=document.getElementById('anchor-section-hint');
-  if(isIOS){
-    anchorHint.textContent='iOS: nhập actual ROAS bất kỳ D → recalibrate từ D đó trở đi.';
-  } else {
-    anchorHint.innerHTML='Android: D3 là early signal. Điền actual ROAS (D7, D14, D30...) khi có → model tự cải thiện predict.';
-  }
-
-  // GEO hint
-  const geoHint=document.getElementById('geo-hint');
-  geoHint.style.display='';
-  if(isIOS){
-    geoHint.innerHTML='iOS: nhập <strong>D2 &amp; D7</strong> từ SSOT cho từng GEO.';
-  } else {
-    geoHint.textContent='Android: nhập ROAS theo D bất kỳ cho từng GEO.';
+  const roasHint=document.getElementById('roas-input-hint');
+  if(roasHint){
+    if(isIOS){
+      roasHint.textContent='iOS: nhập actual ROAS bất kỳ D → recalibrate từ D đó trở đi.';
+    } else {
+      roasHint.textContent='Android: D3 là early signal. Điền actual ROAS khi có → model tự cải thiện predict.';
+    }
   }
 
   // Show/hide source section (iOS only)
@@ -1171,27 +1233,49 @@ function clearSources(){
 }
 
 // ═══════════════════════════════════════════
-// ANCHOR HELPERS
+// ANCHOR HELPERS (new vertical D-row design)
 // ═══════════════════════════════════════════
 const ANCHOR_DAYS_ANDROID=[7,10,14,17,21,30];
 const ANCHOR_DAYS_IOS=[14,21,30,45,60];
+const INPUT_DAYS=[7,10,14,17,21,30]; // unified D columns for both App & GEO
 
-function buildAnchorRows(m){
-  const el=document.getElementById('anchor-rows');
-  if(!m){el.innerHTML='<div style="font-size:11px;color:var(--faint)">Chọn app để xem.</div>';return;}
-  const days=m.platform==='ios'?ANCHOR_DAYS_IOS:ANCHOR_DAYS_ANDROID;
-  el.innerHTML=days.filter(d=>m.appRatio[d]).map(d=>`
-    <div class="anchor-row">
-      <div class="anchor-day">D${d}</div>
-      <div class="anchor-base">base: <span id="anc-base-${d}">—</span></div>
-      <input class="anchor-input" type="number" id="anc-${d}" step="0.01" min="0" max="9999"
-        placeholder="actual" oninput="onAnchorInput(${d},this)"/>
-    </div>`).join('');
+function switchRoasTab(id,btn){
+  document.querySelectorAll('.roas-tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.roas-tab-pane').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById(`rtp-${id}`).classList.add('on');
+}
+
+// ── App Level: vertical D rows ──
+function buildAppDRows(m){
+  const el=document.getElementById('app-d-rows');
+  if(!m){el.innerHTML='<div style="font-size:11px;color:var(--faint);padding:12px 0">Chọn app để xem.</div>';return;}
+  const days=INPUT_DAYS.filter(d=>m.appRatio[d]);
+  if(days.length===0){el.innerHTML='<div style="font-size:11px;color:var(--faint)">Không có day nào khả dụng.</div>';return;}
+  
+  el.innerHTML=days.map(d=>`
+    <div class="d-row">
+      <div class="d-row-label">D${d}</div>
+      <div class="d-row-base">base: <span class="base-val" id="anc-base-${d}">—</span></div>
+      <div class="d-row-input">
+        <input type="number" id="anc-${d}" step="0.01" min="0" max="9999" placeholder="actual %"
+          oninput="onDRowInput(this);updateAnchorStatus()"/>
+      </div>
+    </div>
+  `).join('');
   updateAnchorBases();
 }
 
+function onDRowInput(el){
+  el.classList.toggle('has-val',!!el.value);
+}
+
+function buildAnchorRows(m){
+  buildAppDRows(m);
+}
+
 function onAnchorInput(day,el){
-  el.style.borderColor=el.value?'var(--accent)':'var(--border)';
+  el.classList.toggle('has-val',!!el.value);
   updateAnchorStatus();
 }
 
@@ -1199,10 +1283,9 @@ function updateAnchorBases(){
   const anchor=parseFloat(document.getElementById('inp-anchor').value)||0;
   const key=document.getElementById('sel-app').value; if(!key||!anchor) return;
   const m=loadModels()[key]; if(!m) return;
-  const days=m.platform==='ios'?ANCHOR_DAYS_IOS:ANCHOR_DAYS_ANDROID;
-  days.forEach(d=>{
+  INPUT_DAYS.forEach(d=>{
     const el=document.getElementById(`anc-base-${d}`);
-    if(el&&m.appRatio[d]) el.textContent=(anchor*m.appRatio[d]).toFixed(2)+'%';
+    if(el&&m.appRatio[d]) el.textContent=(anchor*m.appRatio[d]).toFixed(1)+'%';
   });
   updateAnchorStatus();
 }
@@ -1217,10 +1300,7 @@ function updateAnchorStatus(){
 
 function getAnchorInputs(){
   const out={};
-  const key=document.getElementById('sel-app').value;
-  const m=key?loadModels()[key]:null;
-  const days=m?.platform==='ios'?ANCHOR_DAYS_IOS:ANCHOR_DAYS_ANDROID;
-  days.forEach(d=>{
+  INPUT_DAYS.forEach(d=>{
     const el=document.getElementById(`anc-${d}`);
     if(el&&el.value!=''){const v=parseFloat(el.value);if(!isNaN(v)&&v>0)out[d]=v;}
   });
@@ -1228,11 +1308,141 @@ function getAnchorInputs(){
 }
 
 function clearAnchors(){
-  [...ANCHOR_DAYS_ANDROID,...ANCHOR_DAYS_IOS].forEach(d=>{
+  INPUT_DAYS.forEach(d=>{
     const el=document.getElementById(`anc-${d}`);
-    if(el){el.value='';el.style.borderColor='var(--border)';}
+    if(el){el.value='';el.classList.remove('has-val');}
   });
   document.getElementById('anchor-status').textContent='';
+}
+
+function clearAllRoasInputs(){
+  clearAnchors();
+  clearGeo();
+}
+
+// ── GEO Level: dropdown select GEO → show D rows ──
+let _geoModel=null; // store ref to current model for GEO
+let _activeGeos={}; // {geo: {d7:val, d10:val, ...}}
+
+function buildGeoPanel(m){
+  _geoModel=m;
+  _activeGeos={};
+  const el=document.getElementById('geo-panel-content');
+  if(!m||!m.geoMult||Object.keys(m.geoMult).length===0){
+    el.innerHTML='<div style="font-size:11px;color:var(--faint);padding:12px 0">Model này không có GEO data.</div>';return;
+  }
+  const sorted=Object.entries(m.geoMult).sort((a,b)=>b[1].u-a[1].u);
+  el.innerHTML=`
+    <div class="geo-select-wrap">
+      <select class="geo-select" id="geo-selector" onchange="onGeoSelect(this.value)">
+        <option value="">— Chọn GEO để nhập ROAS —</option>
+        ${sorted.map(([geo,d])=>`<option value="${geo}">${geo} — ${(d.u/1000).toFixed(1)}K users · ${d.t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="geo-badge-row" id="geo-badges"></div>
+    <div id="geo-d-rows" style="margin-top:6px"></div>
+    <div id="geo-summary" style="margin-top:8px;font-size:10px"></div>
+  `;
+}
+
+function onGeoSelect(geo){
+  if(!geo||!_geoModel) return;
+  // Init storage for this GEO if not exists
+  if(!_activeGeos[geo]) _activeGeos[geo]={};
+  renderGeoDRows(geo);
+  renderGeoBadges();
+  // Reset dropdown to placeholder
+  document.getElementById('geo-selector').value='';
+}
+
+function renderGeoDRows(geo){
+  const el=document.getElementById('geo-d-rows');
+  if(!geo){el.innerHTML='';return;}
+  const m=_geoModel;
+  const days=INPUT_DAYS.filter(d=>m.appRatio[d]);
+  const gd=m.geoMult?.[geo];
+  const vals=_activeGeos[geo]||{};
+  const appAnchor=parseFloat(document.getElementById('inp-anchor').value)||0;
+  
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-size:12px;font-weight:700;color:var(--text)">${geo}
+        <span style="font-size:10px;font-weight:500;color:var(--muted);margin-left:6px">${gd?(gd.u/1000).toFixed(1)+'K · '+gd.t:''}</span>
+      </div>
+      <button class="btn btn-outline btn-sm" style="font-size:10px;padding:3px 8px" onclick="removeGeo('${geo}')">✕ remove</button>
+    </div>
+    ${days.map(d=>{
+      const appBase=appAnchor&&m.appRatio[d]?(appAnchor*m.appRatio[d]).toFixed(1)+'%':'—';
+      return `
+      <div class="d-row">
+        <div class="d-row-label">D${d}</div>
+        <div class="d-row-base">app base: <span class="base-val">${appBase}</span></div>
+        <div class="d-row-input">
+          <input type="number" id="g-${geo}-d${d}" step="0.01" min="0" max="9999" placeholder="actual %"
+            value="${vals[d]||''}"
+            oninput="onGeoDInput('${geo}',${d},this)" class="${vals[d]?'has-val':''}"/>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function onGeoDInput(geo,day,el){
+  el.classList.toggle('has-val',!!el.value);
+  if(!_activeGeos[geo]) _activeGeos[geo]={};
+  if(el.value){
+    _activeGeos[geo][day]=parseFloat(el.value);
+  } else {
+    delete _activeGeos[geo][day];
+  }
+  // If all empty, remove geo
+  if(Object.keys(_activeGeos[geo]).length===0){
+    delete _activeGeos[geo];
+  }
+  renderGeoBadges();
+  updateGeoSummary();
+}
+
+function removeGeo(geo){
+  delete _activeGeos[geo];
+  renderGeoBadges();
+  document.getElementById('geo-d-rows').innerHTML='';
+  updateGeoSummary();
+}
+
+function renderGeoBadges(){
+  const el=document.getElementById('geo-badges');
+  if(!el) return;
+  const geos=Object.keys(_activeGeos);
+  if(geos.length===0){el.innerHTML='';return;}
+  el.innerHTML=geos.map(g=>{
+    const days=Object.keys(_activeGeos[g]).length;
+    return `<span class="geo-badge" onclick="onGeoSelect('${g}')">${g} (${days}D) <span class="gbx" onclick="event.stopPropagation();removeGeo('${g}')">×</span></span>`;
+  }).join('');
+}
+
+function updateGeoSummary(){
+  const el=document.getElementById('geo-summary');
+  if(!el) return;
+  const count=Object.keys(_activeGeos).length;
+  if(count===0){el.textContent='';return;}
+  el.innerHTML=`<span style="color:var(--green);font-weight:600">✓ ${count} GEO(s) configured</span>`;
+}
+
+function buildGeoRows(m){
+  buildGeoPanel(m);
+}
+
+function clearGeo(){
+  _activeGeos={};
+  const el=document.getElementById('geo-d-rows');
+  if(el) el.innerHTML='';
+  renderGeoBadges();
+  updateGeoSummary();
+  // Also clear any leftover DOM inputs
+  document.querySelectorAll('[id^="g-"]').forEach(el=>{
+    if(el.tagName==='INPUT'){el.value='';el.classList.remove('has-val');}
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -1300,24 +1510,17 @@ function predict(){
     sourcePred[sid]={...src,srcWeight,preds,earlySignal};
   }
 
-  // GEO predictions
+  // GEO predictions — read from _activeGeos state
   const geoInputs={};
   if(m.geoMult){
-    if(m.platform==='ios'){
-      // iOS: read D2 + D7, use D7 as primary anchor (SSOT), D2 for early signal
-      for(const geo of Object.keys(m.geoMult)){
-        const elD2=document.getElementById(`g-${geo}-d2`);
-        const elD7=document.getElementById(`g-${geo}-d7`);
-        const d2=elD2&&elD7&&elD2.value?parseFloat(elD2.value):null;
-        const d7=elD7&&elD7.value?parseFloat(elD7.value):null;
-        if(d7!=null) geoInputs[geo]={anchor:d7,d2,d7,type:'ios'};
-      }
-    } else {
-      // Android: any D, single input
-      for(const geo of Object.keys(m.geoMult)){
-        const el=document.getElementById(`g-${geo}`);
-        if(el&&el.value!='') geoInputs[geo]={anchor:parseFloat(el.value),type:'android'};
-      }
+    for(const [geo,dayVals] of Object.entries(_activeGeos)){
+      if(!m.geoMult[geo]) continue;
+      const filledDays=Object.keys(dayVals).map(Number).filter(d=>dayVals[d]>0).sort((a,b)=>a-b);
+      if(filledDays.length===0) continue;
+      const primaryDay=filledDays[0];
+      const primaryVal=dayVals[primaryDay];
+      const d7=dayVals[7]||null;
+      geoInputs[geo]={anchor:primaryVal,anchorDay:primaryDay,allAnchors:dayVals,d2:null,d7,type:m.platform==='ios'?'ios':'android'};
     }
   }
   const geoPred={};
@@ -1592,51 +1795,12 @@ function renderChart(){
   }
 }
 
-function buildGeoRows(m){
-  const el=document.getElementById('geo-rows');
-  if(!m.geoMult||Object.keys(m.geoMult).length===0){
-    el.innerHTML='<div style="font-size:11px;color:var(--faint)">Model này không có GEO data.</div>';return;
-  }
-  const isIOS=m.platform==='ios';
-  const sorted=Object.entries(m.geoMult).sort((a,b)=>b[1].u-a[1].u);
-
-  if(isIOS){
-    // iOS: D2 + D7 from SSOT
-    el.innerHTML=`<div style="display:grid;grid-template-columns:32px 1fr 70px 70px;gap:6px;padding:4px 0 6px;border-bottom:1.5px solid var(--border2)">
-      <div style="font-size:9px;font-weight:700;color:var(--muted)">GEO</div>
-      <div style="font-size:9px;font-weight:700;color:var(--muted)">Users</div>
-      <div style="font-size:9px;font-weight:700;color:var(--ios);text-align:right">D2 SSOT</div>
-      <div style="font-size:9px;font-weight:700;color:var(--ios);text-align:right">D7 SSOT</div>
-    </div>`+sorted.map(([geo,d])=>`
-    <div style="display:grid;grid-template-columns:32px 1fr 70px 70px;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700">${geo}</div>
-      <div style="font-size:10px;color:var(--muted)">${(d.u/1000).toFixed(1)}K <span class="tag tag-${d.t[0].toLowerCase()}">${d.t[0]}</span></div>
-      <input class="anchor-input" type="number" id="g-${geo}-d2" step="0.01" min="0" max="9999" placeholder="D2"
-        oninput="this.style.borderColor=this.value?'var(--ios)':'var(--border)'"/>
-      <input class="anchor-input" type="number" id="g-${geo}-d7" step="0.01" min="0" max="9999" placeholder="D7"
-        oninput="this.style.borderColor=this.value?'var(--ios)':'var(--border)'"/>
-    </div>`).join('');
-  } else {
-    // Android: any D level
-    el.innerHTML=`<div style="display:grid;grid-template-columns:32px 1fr 18px 80px;gap:6px;padding:4px 0 6px;border-bottom:1.5px solid var(--border2)">
-      <div style="font-size:9px;font-weight:700;color:var(--muted)">GEO</div>
-      <div style="font-size:9px;font-weight:700;color:var(--muted)">Users</div>
-      <div></div>
-      <div style="font-size:9px;font-weight:700;color:var(--android);text-align:right">ROAS (any D)</div>
-    </div>`+sorted.map(([geo,d])=>`
-    <div style="display:grid;grid-template-columns:32px 1fr 18px 80px;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700">${geo}</div>
-      <div style="font-size:10px;color:var(--muted)">${(d.u/1000).toFixed(1)}K</div>
-      <span class="tag tag-${d.t[0].toLowerCase()}">${d.t[0]}</span>
-      <input class="anchor-input" type="number" id="g-${geo}" step="0.01" min="0" max="9999" placeholder="—"
-        oninput="this.style.borderColor=this.value?'var(--android)':'var(--border)'"/>
-    </div>`).join('');
-  }
+function _buildGeoRowsCompat(m){
+  // Already handled by buildGeoPanel above — this is a no-op compat shim
 }
 
-function clearGeo(){
-  // Android: id=g-GEO; iOS: id=g-GEO-d2 and g-GEO-d7
-  document.querySelectorAll('[id^="g-"]').forEach(el=>{el.value='';el.style.borderColor='var(--border)';});
+function _clearGeoCompat(){
+  // Already handled by clearGeo above
 }
 
 function renderGeo(){
