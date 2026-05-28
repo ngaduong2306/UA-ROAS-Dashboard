@@ -339,25 +339,22 @@ input::placeholder{color:var(--faint)}
 .be-sub{font-size:10px;color:var(--muted);margin-top:3px}
 
 /* Source breakdown */
-.source-breakdown{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.source-breakdown{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:20px}
 .sb-card{
-  background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px;
 }
 .sb-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .sb-dot{width:10px;height:10px;border-radius:50%}
-.sb-name{font-size:12px;font-weight:700}
+.sb-name{font-size:13px;font-weight:700}
 .sb-weight{margin-left:auto;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
-.sb-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-.sb-kpi{text-align:center}
+.sb-kpis{display:flex;gap:0;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:10px}
+.sb-kpi{text-align:center;flex:1}
 .sb-kpi-label{font-size:9px;color:var(--muted);font-weight:600;margin-bottom:3px;letter-spacing:.04em}
-.sb-kpi-val{font-size:14px;font-weight:700}
-.sb-financials{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px}
-.sb-fin-label{color:var(--muted)}
-.sb-fin-val{font-weight:600;text-align:right}
-.sb-warning{
-  margin-top:8px;padding:6px 10px;border-radius:6px;font-size:10px;font-weight:600;
-  background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);
-}
+.sb-kpi-val{font-size:15px;font-weight:700}
+.sb-financials{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:16px;font-size:11px}
+.sb-fin-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+.sb-fin-label{color:var(--muted);font-size:10px}
+.sb-fin-val{font-weight:600;font-size:12px}
 
 /* Tables */
 .dt{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto}
@@ -1487,22 +1484,17 @@ function predict(){
     if(!src.d7) continue;
     // Source weight: how this source's D7 compares to app-level D7
     const srcWeight=src.d7/d7Total;
-    // Predict D14/D30/D60/D90 via weight applied to app-level prediction
+    // Predict all key days via weight applied to app-level prediction
     const preds={};
-    for(const d of [14,30,60,90]){
+    for(const d of [7,10,14,17,21,24,30,60,90]){
       if(appPred[d]){
         preds[d]=parseFloat((appPred[d]*srcWeight).toFixed(2));
       }
     }
-    // D2/D7 ratio early signal
-    let earlySignal=null;
-    if(src.d2&&src.d7&&m.d2d7ratio){
-      const srcD2D7=src.d2/src.d7;
-      const diff=srcD2D7-m.d2d7ratio;
-      const pct=(diff/m.d2d7ratio)*100;
-      earlySignal={srcRatio:srcD2D7,histRatio:m.d2d7ratio,diffPct:parseFloat(pct.toFixed(1)),flag:Math.abs(pct)>15};
-    }
-    sourcePred[sid]={...src,srcWeight,preds,earlySignal};
+    // D7 actual from input
+    preds[7]=src.d7;
+    if(src.d2) preds[2]=src.d2;
+    sourcePred[sid]={...src,srcWeight,preds};
   }
 
   // GEO predictions — read from _activeGeos state
@@ -1649,55 +1641,49 @@ function renderSource(){
   document.getElementById('src-cards').innerHTML=entries.map(([sid,s])=>{
     const weight=(s.srcWeight*100).toFixed(1);
     const isOver=s.srcWeight>1;
-    const d30=s.preds[30];
-    const d60=s.preds[60];
-    const d90=s.preds[90];
-    const rev30=s.spend&&d30?+(s.spend*d30/100).toFixed(0):null;
+    const srcDays=[7,10,17,24,30,60,90];
+    const rev30=s.spend&&s.preds[30]?+(s.spend*s.preds[30]/100).toFixed(0):null;
     const prof30=rev30!=null?rev30-s.spend:null;
-    const earlyWarn=s.earlySignal?.flag;
     return `<div class="sb-card">
       <div class="sb-header">
         <div class="sb-dot" style="background:${s.color}"></div>
         <div class="sb-name">${s.name}</div>
         <span class="sb-weight badge ${isOver?'badge-accent':'badge-muted'}">${isOver?'▲':s.srcWeight<0.9?'▼':'='} ${weight}% vs app avg</span>
       </div>
-      ${earlyWarn?`<div class="sb-warning">⚠️ D2/D7 ratio lệch ${s.earlySignal.diffPct>0?'+':''}${s.earlySignal.diffPct}% vs historical — monitor closely</div>`:''}
       <div class="sb-kpis">
-        ${d30!=null?`<div class="sb-kpi"><div class="sb-kpi-label">D30</div><div class="sb-kpi-val ${roasColor(d30)}">${d30.toFixed(1)}%</div></div>`:''}
-        ${d60!=null?`<div class="sb-kpi"><div class="sb-kpi-label">D60</div><div class="sb-kpi-val ${roasColor(d60)}">${d60.toFixed(1)}%</div></div>`:''}
-        ${d90!=null?`<div class="sb-kpi"><div class="sb-kpi-label">D90</div><div class="sb-kpi-val ${roasColor(d90)}">${d90.toFixed(1)}%</div></div>`:''}
+        ${srcDays.map(d=>{
+          const val=s.preds[d];
+          return val!=null?`<div class="sb-kpi"><div class="sb-kpi-label">D${d}</div><div class="sb-kpi-val ${roasColor(val)}">${val.toFixed(1)}%</div></div>`:'';
+        }).join('')}
       </div>
-      ${s.spend>0&&d30!=null?`<div class="sb-financials">
-        <span class="sb-fin-label">Spend</span><span class="sb-fin-val">${fmt$(s.spend)}</span>
-        <span class="sb-fin-label">Rev D30</span><span class="sb-fin-val">${fmt$(rev30)}</span>
-        <span class="sb-fin-label">Profit D30</span><span class="sb-fin-val ${prof30!=null?(prof30>=0?'clr-green':'clr-red'):''}">${prof30!=null?(prof30>=0?'+':'')+fmt$(prof30):'—'}</span>
+      ${s.spend>0&&s.preds[30]!=null?`<div class="sb-financials">
+        <div class="sb-fin-item"><span class="sb-fin-label">Spend</span><span class="sb-fin-val">${fmt$(s.spend)}</span></div>
+        <div class="sb-fin-item"><span class="sb-fin-label">Rev D30</span><span class="sb-fin-val">${fmt$(rev30)}</span></div>
+        <div class="sb-fin-item"><span class="sb-fin-label">Profit D30</span><span class="sb-fin-val ${prof30!=null?(prof30>=0?'clr-green':'clr-red'):''}">${prof30!=null?(prof30>=0?'+':'')+fmt$(prof30):'—'}</span></div>
       </div>`:''}
     </div>`;
   }).join('');
 
-  // Source comparison table
+  // Source comparison table — expanded days, no D2/D7 ratio
+  const tblDays=[7,10,17,24,30,60,90];
   document.getElementById('src-table-wrap').innerHTML=`
     <table class="dt">
       <thead><tr>
-        <th>Source</th><th class="r">D7 Input</th><th class="r">Weight vs App</th>
-        <th class="r">D2/D7 Ratio</th><th class="r">D30</th><th class="r">D60</th><th class="r">D90</th>
+        <th>Source</th><th class="r">Weight</th>
+        ${tblDays.map(d=>`<th class="r">D${d}</th>`).join('')}
         <th class="r">Spend</th><th class="r">Rev D30</th><th class="r">Profit D30</th>
       </tr></thead>
       <tbody>${entries.map(([sid,s])=>{
-        const d30=s.preds[30],d60=s.preds[60],d90=s.preds[90];
-        const rev30=s.spend&&d30?+(s.spend*d30/100).toFixed(0):null;
+        const rev30=s.spend&&s.preds[30]?+(s.spend*s.preds[30]/100).toFixed(0):null;
         const prof30=rev30!=null?rev30-s.spend:null;
-        const srcRatio=s.d2&&s.d7?(s.d2/s.d7).toFixed(3):'—';
-        const earlyWarn=s.earlySignal?.flag;
         return `<tr>
           <td><span class="source-dot" style="background:${s.color};display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px"></span>
-            <strong>${s.name}</strong>${earlyWarn?' <span class="warn-flag">⚠️ signal</span>':''}</td>
-          <td class="r">${s.d7.toFixed(2)}%</td>
+            <strong>${s.name}</strong></td>
           <td class="r ${s.srcWeight>=1?'clr-green':'clr-red'}">${(s.srcWeight*100).toFixed(1)}%</td>
-          <td class="r" style="color:var(--muted)">${srcRatio}${s.earlySignal?` (hist: ${s.earlySignal.histRatio})`:''}</td>
-          <td class="r ${d30?roasColor(d30):''}">${d30?.toFixed(2)||'—'}%</td>
-          <td class="r ${d60?roasColor(d60):''}">${d60?.toFixed(2)||'—'}%</td>
-          <td class="r ${d90?roasColor(d90):''}">${d90?.toFixed(2)||'—'}%</td>
+          ${tblDays.map(d=>{
+            const val=s.preds[d];
+            return `<td class="r ${val?roasColor(val):''}">${val?.toFixed(1)||'—'}%</td>`;
+          }).join('')}
           <td class="r">${fmt$(s.spend||null)}</td>
           <td class="r">${fmt$(rev30)}</td>
           <td class="r ${prof30!=null?(prof30>=0?'clr-green':'clr-red'):''}">${prof30!=null?(prof30>=0?'+':'')+fmt$(prof30):'—'}</td>
@@ -1761,14 +1747,16 @@ function renderChart(){
       pointBackgroundColor:'#34c759',pointBorderColor:'#fff',pointBorderWidth:2,fill:false,showLine:false
     });
   }
-  // Source curves on chart
+  // Source curves on chart — plot all predicted days
   if(hasSources){
     for(const [sid,s] of Object.entries(sourcePred)){
-      const sdays=Object.keys(s.preds).map(Number).sort((a,b)=>a-b);
       datasets.push({
-        label:s.name,data:days.map(d=>s.preds[d]??null),
-        borderColor:s.color+'99',borderWidth:1.5,borderDash:[4,2],
-        pointRadius:0,fill:false,tension:0.1
+        label:s.name,
+        data:days.map(d=>s.preds[d]??null),
+        borderColor:s.color,borderWidth:2,borderDash:[6,3],
+        pointRadius:days.map(d=>s.preds[d]!=null?3:0),
+        pointBackgroundColor:s.color,
+        fill:false,tension:0.1,spanGaps:true
       });
     }
   }
