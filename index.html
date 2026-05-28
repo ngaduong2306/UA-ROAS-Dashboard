@@ -883,14 +883,15 @@ function trainApp(){
 
   try{
     const platform = trainState.platform;
-    const anchorDay = trainState.anchorDay;
+    const ssotAnchorDay = trainState.anchorDay; // D2 or D7, only for iOS Media Source
+    const appAnchorDay = 3; // App + GEO always use D3 for both platforms
 
     const appRow = trainState.appCSV[0];
     const appDayVals = extractDayVals(appRow);
-    const anchorVal = appDayVals[anchorDay];
-    if(!anchorVal || anchorVal===0) throw new Error(`ROAS D${anchorDay} = 0 hoặc không tìm thấy.`);
+    const anchorVal = appDayVals[appAnchorDay];
+    if(!anchorVal || anchorVal===0) throw new Error(`ROAS D${appAnchorDay} = 0 hoặc không tìm thấy. Kiểm tra CSV có cột day 3.`);
 
-    // Ratio table: ratio[d] = ROAS_d / ROAS_anchorDay
+    // Ratio table: ratio[d] = ROAS_d / ROAS_D3 (always D3)
     const appRatio = {};
     for(const [d,v] of Object.entries(appDayVals)){
       appRatio[+d] = parseFloat((v/anchorVal).toFixed(6));
@@ -912,7 +913,7 @@ function trainApp(){
       d2d7ratio = parseFloat((appDayVals[2]/appDayVals[7]).toFixed(5));
     }
 
-    // GEO level
+    // GEO level — always anchored to D3
     let geoMult=null, globalMult=null, geoCount=0;
     if(trainState.geoCSV){
       geoMult = {};
@@ -922,7 +923,7 @@ function trainApp(){
         const users = parseInt(row['Users'])||0;
         if(!geo || users<minUsers) continue;
         const dayVals = extractDayVals(row);
-        const anchor = dayVals[anchorDay];
+        const anchor = dayVals[appAnchorDay]; // always D3
         if(!anchor || anchor===0) continue;
         const mults = {};
         for(const d of [7,14,30,60,90]){
@@ -994,7 +995,7 @@ function trainApp(){
     // MAE
     const maeVals=[];
     for(const d of sortedDays){
-      if(d<=anchorDay) continue;
+      if(d<=appAnchorDay) continue;
       const pred = anchorVal*appRatio[d];
       const actual = appDayVals[d];
       if(actual) maeVals.push(Math.abs(actual-pred));
@@ -1004,7 +1005,10 @@ function trainApp(){
     const models = loadModels();
     const modelKey = name.toLowerCase().replace(/\s+/g,'_')+'_'+platform;
     models[modelKey] = {
-      name, appId, modelKey, platform, anchorDay, d2d7ratio,
+      name, appId, modelKey, platform,
+      anchorDay: appAnchorDay,        // always 3 for app+GEO
+      ssotAnchorDay: ssotAnchorDay,   // D2 or D7 for iOS source only
+      d2d7ratio,
       trainedAt: new Date().toISOString(),
       users, cost, cpi:parseFloat(cpi),
       maxDay, renewalDays,
@@ -1015,7 +1019,7 @@ function trainApp(){
 
     const platIcon = platform==='ios'?'🍎':'🤖';
     resultEl.innerHTML=`<div class="upload-status us-ok">
-      ✓ Trained "${name}" ${platIcon} · Anchor D${anchorDay} · D1-D${maxDay} · ${geoCount} GEOs · ${srcCount} Sources · MAE ≈ ${mae}%
+      ✓ Trained "${name}" ${platIcon} · App anchor D${appAnchorDay}${platform==='ios'?' · SSOT D'+ssotAnchorDay+' (source)':''} · D1-D${maxDay} · ${geoCount} GEOs · ${srcCount} Sources · MAE ≈ ${mae}%
     </div>`;
 
     refreshAppList(); populateAppSelect(); updateTopbar(); clearTrainForm();
@@ -1142,31 +1146,22 @@ function onAppSelect(){
   const key=document.getElementById('sel-app').value; if(!key) return;
   const m=loadModels()[key]; if(!m) return;
   const isIOS=m.platform==='ios';
-  const anchorDay=m.anchorDay||3;
 
-  // Update anchor label — Android: D3 is early signal anchor; iOS: anchorDay
+  // Both platforms use D3 for app-level + GEO
+  document.getElementById('anchor-label').textContent='ROAS D3 — app level (%)';
+  document.getElementById('inp-anchor').placeholder='e.g. 58.38';
+  const hint=document.getElementById('anchor-hint');
+  hint.style.display='';
   if(isIOS){
-    document.getElementById('anchor-label').textContent=`ROAS D${anchorDay} — app level (%)`;
-    document.getElementById('inp-anchor').placeholder=`e.g. ${anchorDay===2?'48.20':'98.40'}`;
-    const hint=document.getElementById('anchor-hint');
-    hint.style.display='';
-    hint.textContent='iOS: app level — nhập bất kỳ D nào có sẵn.';
+    hint.textContent='Nhập ROAS D3 app-level. Media Source dùng D2/D7 SSOT riêng bên dưới.';
   } else {
-    document.getElementById('anchor-label').textContent='ROAS D3 — app level · early signal (%)';
-    document.getElementById('inp-anchor').placeholder='e.g. 106.81';
-    const hint=document.getElementById('anchor-hint');
-    hint.style.display='';
-    hint.innerHTML='Android: D3 = early signal anchor. Điền actual ROAS bên dưới để improve prediction.';
+    hint.textContent='D3 = early signal anchor. Điền actual ROAS bên dưới để improve prediction.';
   }
 
   // Update Actual ROAS section hint
   const roasHint=document.getElementById('roas-input-hint');
   if(roasHint){
-    if(isIOS){
-      roasHint.textContent='iOS: nhập actual ROAS bất kỳ D → recalibrate từ D đó trở đi.';
-    } else {
-      roasHint.textContent='Android: D3 là early signal. Điền actual ROAS khi có → model tự cải thiện predict.';
-    }
+    roasHint.textContent='Nhập actual ROAS khi có → model recalibrate từ anchor đó trở đi.';
   }
 
   // Show/hide source section (iOS only)
@@ -1179,7 +1174,7 @@ function onAppSelect(){
   const icon=isIOS?'🍎':'🤖';
   document.getElementById('model-box').innerHTML=`
     <strong>${m.name}</strong> ${icon}<br>
-    Platform: ${isIOS?'iOS':'Android'} · ${isIOS?`SSOT anchor D${anchorDay}`:'Early signal D3'}<br>
+    Platform: ${isIOS?'iOS':'Android'} · ${isIOS?`SSOT D${m.ssotAnchorDay||7} (source) · App anchor D3`:'Early signal D3'}<br>
     D1-D${m.maxDay} · ${m.stats?.geoCount||0} GEOs<br>
     MAE ±${m.stats?.mae||'—'}% · Renewal: [${m.renewalDays?.slice(0,4).join(',')||'—'}...]
     ${isIOS&&m.d2d7ratio?`<br>D2/D7 hist ratio: ${m.d2d7ratio}×`:''}`;
@@ -1552,7 +1547,7 @@ function predict(){
   const anchorDay=m.anchorDay||3;
   const isIOS=m.platform==='ios';
   document.getElementById('sb-app').textContent=m.name+' · '+(isIOS?'iOS':'Android');
-  document.getElementById('sb-anchor').textContent=isIOS?`D${anchorDay}: ${anchorVal}% (SSOT anchor)`:`D3: ${anchorVal}% (early signal)`;
+  document.getElementById('sb-anchor').textContent=`D3: ${anchorVal}% (app anchor)`;
   document.getElementById('sb-spend').textContent=spend>0?`$${spend.toLocaleString()}`:'No spend';
   document.getElementById('sb-src').textContent=isIOS?`Sources: ${Object.keys(sourcePred).length}`:'';
   document.getElementById('sb-geo-ct').textContent=`GEO: ${Object.keys(geoInputs).length}`;
